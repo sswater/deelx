@@ -195,7 +195,10 @@ template <class ELT> void CBufferT <ELT> :: Append(const ELT * pcsz, int length,
 		nNewLength *= 2;
 
 	if(CBufferRefT <ELT> :: m_nSize + length + eol > nNewLength)
-		nNewLength = CBufferRefT <ELT> :: m_nSize + length + eol;
+	{
+		nNewLength  = CBufferRefT <ELT> :: m_nSize + length + eol + 11;
+		nNewLength -= nNewLength % 8;
+	}
 
 	// Realloc
 	if(nNewLength > m_nMaxLength)
@@ -317,7 +320,10 @@ template <class ELT> void CBufferT <ELT> :: Prepare(int index, int fill)
 			nNewLength *= 2;
 
 		if( nNewSize > nNewLength )
-			nNewLength = nNewSize;
+		{
+			nNewLength  = nNewSize + 11;
+			nNewLength -= nNewLength % 8;
+		}
 
 		ELT * pNewBuffer = new ELT[nNewLength];
 
