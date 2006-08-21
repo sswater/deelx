@@ -1857,6 +1857,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRepeat(int & fla
 
 	// quantifier range
 	unsigned int nMin = 0, nMax = 0;
+	char comma;
 
 	switch(curr.ch)
 	{
@@ -1878,7 +1879,6 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRepeat(int & fla
 			MoveNext();
 
 			// read
-			char comma;
 			int red = sscanf(re.GetBuffer() ? re.GetBuffer() : "", "%u%1s%u", &nMin, &comma, &nMax);
 
 			// check
