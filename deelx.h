@@ -827,6 +827,8 @@ template <class CHART> int CPosixElxT <CHART> :: misblank(int c)
 
 template <class CHART> int CPosixElxT <CHART> :: Match(CContext * pContext)
 {
+	if(m_posixfun == 0) return 0;
+
 	int tlen = pContext->m_pMatchStringLength;
 	int npos = pContext->m_nCurrentPos;
 
@@ -837,7 +839,7 @@ template <class CHART> int CPosixElxT <CHART> :: Match(CContext * pContext)
 
 	CHART ch = ((const CHART *)pContext->m_pMatchString)[at];
 
-	int bsucc = m_posixfun != 0 ? (*m_posixfun)(ch) : 0;
+	int bsucc = (*m_posixfun)(ch);
 
 	if( ! m_byes )
 		bsucc = ! bsucc;
