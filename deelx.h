@@ -358,7 +358,7 @@ template <class ELT> CBufferT <ELT> :: ~CBufferT()
 //
 // Context
 //
-class CContext  
+class CContext
 {
 public:
 	CBufferT <int> m_stack;
@@ -390,35 +390,39 @@ public:
 //
 // Alternative
 //
-class CAlternativeElx : public ElxInterface  
+template <int x> class CAlternativeElxT : public ElxInterface
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CAlternativeElx();
+	CAlternativeElxT();
 
 public:
 	CBufferT <ElxInterface *> m_elxlist;
 };
 
+typedef CAlternativeElxT <0> CAlternativeElx;
+
 //
 // Assert
 //
-class CAssertElx : public ElxInterface  
+template <int x> class CAssertElxT : public ElxInterface
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CAssertElx(ElxInterface * pelx, int byes = 1);
+	CAssertElxT(ElxInterface * pelx, int byes = 1);
 
 public:
 	ElxInterface * m_pelx;
 	int m_byes;
 };
+
+typedef CAssertElxT <0> CAssertElx;
 
 //
 // Back reference elx
@@ -634,74 +638,82 @@ template <class CHART> inline int CBoundaryElxT <CHART> :: IsWordChar(CHART ch)
 //
 // Bracket
 //
-class CBracketElx : public ElxInterface  
+template <int x> class CBracketElxT : public ElxInterface
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CBracketElx(int nnumber, int bright);
+	CBracketElxT(int nnumber, int bright);
 
 public:
 	int m_nnumber;
 	int m_bright;
 };
 
+typedef CBracketElxT <0> CBracketElx;
+
 //
 // Deletage
 //
-class CDelegateElx : public ElxInterface  
+template <int x> class CDelegateElxT : public ElxInterface
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CDelegateElx(int ndata = 0);
+	CDelegateElxT(int ndata = 0);
 
 public:
 	ElxInterface * m_pelx;
 	int m_ndata;
 };
 
+typedef CDelegateElxT <0> CDelegateElx;
+
 //
 // Empty
 //
-class CEmptyElx : public ElxInterface  
+template <int x> class CEmptyElxT : public ElxInterface
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CEmptyElx();
+	CEmptyElxT();
 };
+
+typedef CEmptyElxT <0> CEmptyElx;
 
 //
 // Global
 //
-class CGlobalElx : public ElxInterface  
+template <int x> class CGlobalElxT : public ElxInterface
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CGlobalElx();
+	CGlobalElxT();
 };
+
+typedef CGlobalElxT <0> CGlobalElx;
 
 //
 // Repeat
 //
-class CRepeatElx : public ElxInterface  
+template <int x> class CRepeatElxT : public ElxInterface
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CRepeatElx(ElxInterface * pelx, int ntimes);
+	CRepeatElxT(ElxInterface * pelx, int ntimes);
 
 protected:
 	int MatchFixed    (CContext * pContext);
@@ -712,17 +724,19 @@ public:
 	int m_nfixed;
 };
 
+typedef CRepeatElxT <0> CRepeatElx;
+
 //
 // Greedy
 //
-class CGreedyElx : public CRepeatElx  
+template <int x> class CGreedyElxT : public CRepeatElxT <x>
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CGreedyElx(ElxInterface * pelx, int nmin = 0, int nmax = INT_MAX);
+	CGreedyElxT(ElxInterface * pelx, int nmin = 0, int nmax = INT_MAX);
 
 protected:
 	int MatchVart    (CContext * pContext);
@@ -732,38 +746,44 @@ public:
 	int m_nvart;
 };
 
+typedef CGreedyElxT <0> CGreedyElx;
+
 //
 // Independent
 //
-class CIndependentElx : public ElxInterface  
+template <int x> class CIndependentElxT : public ElxInterface
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CIndependentElx(ElxInterface * pelx);
+	CIndependentElxT(ElxInterface * pelx);
 
 public:
 	ElxInterface * m_pelx;
 };
 
+typedef CIndependentElxT <0> CIndependentElx;
+
 //
 // List
 //
-class CListElx : public ElxInterface  
+template <int x> class CListElxT : public ElxInterface
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CListElx(int brightleft);
+	CListElxT(int brightleft);
 
 public:
 	CBufferT <ElxInterface *> m_elxlist;
 	int m_brightleft;
 };
+
+typedef CListElxT <0> CListElx;
 
 //
 // Posix Elx
@@ -859,15 +879,17 @@ template <class CHART> int CPosixElxT <CHART> :: MatchNext(CContext * pContext)
 //
 // Possessive
 //
-class CPossessiveElx : public CGreedyElx  
+template <int x> class CPossessiveElxT : public CGreedyElxT <x>
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CPossessiveElx(ElxInterface * pelx, int nmin = 0, int nmax = INT_MAX);
+	CPossessiveElxT(ElxInterface * pelx, int nmin = 0, int nmax = INT_MAX);
 };
+
+typedef CPossessiveElxT <0> CPossessiveElx;
 
 //
 // Range Elx
@@ -951,14 +973,14 @@ template <class CHART> int CRangeElxT <CHART> :: MatchNext(CContext * pContext)
 //
 // Reluctant
 //
-class CReluctantElx : public CRepeatElx  
+template <int x> class CReluctantElxT : public CRepeatElxT <x>
 {
 public:
 	int Match    (CContext * pContext);
 	int MatchNext(CContext * pContext);
 
 public:
-	CReluctantElx(ElxInterface * pelx, int nmin = 0, int nmax = INT_MAX);
+	CReluctantElxT(ElxInterface * pelx, int nmin = 0, int nmax = INT_MAX);
 
 protected:
 	int MatchVart    (CContext * pContext);
@@ -967,6 +989,8 @@ protected:
 public:
 	int m_nvart;
 };
+
+typedef CReluctantElxT <0> CReluctantElx;
 
 //
 // String Elx
@@ -1049,7 +1073,7 @@ template <class CHART> int CStringElxT <CHART> :: MatchNext(CContext * pContext)
 //
 // MatchResult
 //
-class MatchResult
+template <int x> class MatchResultT
 {
 public:
 	int IsMatched();
@@ -1064,50 +1088,15 @@ public:
 	int GetGroupEnd  (int nGroupNumber);
 
 public:
-	MatchResult(CContext * pContext, int nMaxNumber = -1)
-	{
-		if(pContext != 0)
-		{
-			m_result.Prepare(nMaxNumber * 2 + 3, -1);
-
-			// matched
-			m_result[0] = 1;
-			m_result[1] = nMaxNumber;
-
-			for(int n = 0; n <= nMaxNumber; n++)
-			{
-				int index = pContext->m_captureindex[n];
-				if( index < 0 ) continue;
-
-				// check
-				if( index >= pContext->m_capturestack.GetSize() || pContext->m_capturestack[index] != n )
-				{
-					// to find
-					index = pContext->m_capturestack.GetSize() - 4;
-					while(index >= 0 && pContext->m_capturestack[index] != n) index -= 4;
-
-					// new index
-					pContext->m_captureindex[n] = index;
-					if( index < 0 ) continue;
-				}
-
-				// check enclosed
-				int pos1 = pContext->m_capturestack[index + 1];
-				int pos2 = pContext->m_capturestack[index + 2];
-
-				// info
-				m_result[n*2 + 2] = pos1 < pos2 ? pos1 : pos2;
-				m_result[n*2 + 3] = pos1 < pos2 ? pos2 : pos1;
-			}
-		}
-	}
-
-	MatchResult & operator = (const MatchResult &);
+	MatchResultT(CContext * pContext, int nMaxNumber = -1);
+	MatchResultT <x> & operator = (const MatchResultT <x> &);
 	inline operator int() { return IsMatched(); }
 
 public:
 	CBufferT <int> m_result;
 };
+
+typedef MatchResultT <0> MatchResult;
 
 // Stocked Elx IDs
 enum STOCKELX_ID_DEFINES
@@ -2288,7 +2277,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 		m_grouplist[nThisBackref] = pElx;
 
 		// right
-		MoveNext(); // skip ')' 
+		MoveNext(); // skip ')'
 
 		pList->m_elxlist.Push(Keep(new CBracketElx(nThisBackref, flags & RIGHTTOLEFT ? 0 : 1)));
 
@@ -2478,7 +2467,7 @@ template <class CHART> MatchResult CRegexpT <CHART> :: MatchExact(const CHART * 
 	}
 }
 
-template <class CHART> inline MatchResult CRegexpT <CHART> :: Match(const CHART * tstring, int start)
+template <class CHART> MatchResult CRegexpT <CHART> :: Match(const CHART * tstring, int start)
 {
 	return Match(tstring, CBufferRefT<CHART>(tstring).GetSize(), start);
 }
@@ -2853,11 +2842,11 @@ template <class CHART> inline void CRegexpT <CHART> :: ReleaseContext(CContext *
 //
 // All implementations
 //
-inline CAlternativeElx::CAlternativeElx()
+template <int x> CAlternativeElxT <x> :: CAlternativeElxT()
 {
 }
 
-inline int CAlternativeElx::Match(CContext * pContext)
+template <int x> int CAlternativeElxT <x> :: Match(CContext * pContext)
 {
 	if(m_elxlist.GetSize() == 0)
 		return 1;
@@ -2875,7 +2864,7 @@ inline int CAlternativeElx::Match(CContext * pContext)
 	return 0;
 }
 
-inline int CAlternativeElx::MatchNext(CContext * pContext)
+template <int x> int CAlternativeElxT <x> :: MatchNext(CContext * pContext)
 {
 	if(m_elxlist.GetSize() == 0)
 		return 0;
@@ -2909,13 +2898,13 @@ inline int CAlternativeElx::MatchNext(CContext * pContext)
 
 // assertx.cpp: implementation of the CAssertElx class.
 //
-inline CAssertElx::CAssertElx(ElxInterface * pelx, int byes)
+template <int x> CAssertElxT <x> :: CAssertElxT(ElxInterface * pelx, int byes)
 {
 	m_pelx = pelx;
 	m_byes = byes;
 }
 
-inline int CAssertElx::Match(CContext * pContext)
+template <int x> int CAssertElxT <x> :: Match(CContext * pContext)
 {
 	int nbegin = pContext->m_nCurrentPos;
 	int nsize  = pContext->m_stack.GetSize();
@@ -2940,7 +2929,7 @@ inline int CAssertElx::Match(CContext * pContext)
 	return bsucc;
 }
 
-inline int CAssertElx::MatchNext(CContext * pContext)
+template <int x> int CAssertElxT <x> :: MatchNext(CContext * pContext)
 {
 	int ncsize = 0;
 
@@ -2952,13 +2941,13 @@ inline int CAssertElx::MatchNext(CContext * pContext)
 
 // bracketx.cpp: implementation of the CBracketElx class.
 //
-inline CBracketElx::CBracketElx(int nnumber, int bright)
+template <int x>  CBracketElxT <x> :: CBracketElxT(int nnumber, int bright)
 {
 	m_nnumber = nnumber;
 	m_bright  = bright;
 }
 
-inline int CBracketElx::Match(CContext * pContext)
+template <int x> int CBracketElxT <x> :: Match(CContext * pContext)
 {
 	if( ! m_bright )
 	{
@@ -2999,7 +2988,7 @@ inline int CBracketElx::Match(CContext * pContext)
 	return 1;
 }
 
-inline int CBracketElx::MatchNext(CContext * pContext)
+template <int x> int CBracketElxT <x> :: MatchNext(CContext * pContext)
 {
 	int index = pContext->m_captureindex[m_nnumber];
 
@@ -3030,13 +3019,13 @@ inline int CBracketElx::MatchNext(CContext * pContext)
 
 // delegatx.cpp: implementation of the CDelegateElx class.
 //
-inline CDelegateElx::CDelegateElx(int ndata)
+template <int x> CDelegateElxT <x> :: CDelegateElxT(int ndata)
 {
 	m_pelx  = 0;
 	m_ndata = ndata;
 }
 
-inline int CDelegateElx::Match(CContext * pContext)
+template <int x> int CDelegateElxT <x> :: Match(CContext * pContext)
 {
 	if(m_pelx != 0)
 		return m_pelx->Match(pContext);
@@ -3044,7 +3033,7 @@ inline int CDelegateElx::Match(CContext * pContext)
 		return 1;
 }
 
-inline int CDelegateElx::MatchNext(CContext * pContext)
+template <int x> int CDelegateElxT <x> :: MatchNext(CContext * pContext)
 {
 	if(m_pelx != 0)
 		return m_pelx->MatchNext(pContext);
@@ -3054,79 +3043,79 @@ inline int CDelegateElx::MatchNext(CContext * pContext)
 
 // emptyelx.cpp: implementation of the CEmptyElx class.
 //
-inline CEmptyElx::CEmptyElx()
+template <int x> CEmptyElxT <x> :: CEmptyElxT()
 {
 }
 
-inline int CEmptyElx::Match(CContext *)
+template <int x> int CEmptyElxT <x> :: Match(CContext *)
 {
 	return 1;
 }
 
-inline int CEmptyElx::MatchNext(CContext *)
+template <int x> int CEmptyElxT <x> :: MatchNext(CContext *)
 {
 	return 0;
 }
 
 // globalx.cpp: implementation of the CGlobalElx class.
 //
-inline CGlobalElx::CGlobalElx()
+template <int x> CGlobalElxT <x> ::CGlobalElxT()
 {
 }
 
-inline int CGlobalElx::Match(CContext * pContext)
+template <int x> int CGlobalElxT <x> :: Match(CContext * pContext)
 {
 	return pContext->m_nCurrentPos == pContext->m_nBeginPos;
 }
 
-inline int CGlobalElx::MatchNext(CContext *)
+template <int x> int CGlobalElxT <x> :: MatchNext(CContext *)
 {
 	return 0;
 }
 
 // greedelx.cpp: implementation of the CGreedyElx class.
 //
-inline CGreedyElx::CGreedyElx(ElxInterface * pelx, int nmin, int nmax) : CRepeatElx(pelx, nmin)
+template <int x> CGreedyElxT <x> :: CGreedyElxT(ElxInterface * pelx, int nmin, int nmax) : CRepeatElxT <x> (pelx, nmin)
 {
 	m_nvart = nmax - nmin;
 }
 
-inline int CGreedyElx::Match(CContext * pContext)
+template <int x> int CGreedyElxT <x> :: Match(CContext * pContext)
 {
-	if( ! MatchFixed(pContext) )
+	if( ! CRepeatElxT <x> :: MatchFixed(pContext) )
 		return 0;
 
 	while( ! MatchVart(pContext) )
 	{
-		if( ! MatchNextFixed(pContext) )
+		if( ! CRepeatElxT <x> :: MatchNextFixed(pContext) )
 			return 0;
 	}
 
 	return 1;
 }
 
-inline int CGreedyElx::MatchNext(CContext * pContext)
+template <int x> int CGreedyElxT <x> :: MatchNext(CContext * pContext)
 {
 	if( MatchNextVart(pContext) )
 		return 1;
 
-	if( ! MatchNextFixed(pContext) )
+	if( ! CRepeatElxT <x> :: MatchNextFixed(pContext) )
 		return 0;
 
 	while( ! MatchVart(pContext) )
 	{
-		if( ! MatchNextFixed(pContext) )
+		if( ! CRepeatElxT <x> :: MatchNextFixed(pContext) )
 			return 0;
 	}
 
 	return 1;
 }
 
-inline int CGreedyElx::MatchVart(CContext * pContext)
+template <int x> int CGreedyElxT <x> :: MatchVart(CContext * pContext)
 {
 	int n = 0;
 
-	while(n < m_nvart && m_pelx->Match(pContext))
+	while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 		n ++;
 
 	pContext->m_stack.Push(n);
@@ -3134,7 +3123,7 @@ inline int CGreedyElx::MatchVart(CContext * pContext)
 	return 1;
 }
 
-inline int CGreedyElx::MatchNextVart(CContext * pContext)
+template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext)
 {
 	int n = 0;
 
@@ -3143,9 +3132,9 @@ inline int CGreedyElx::MatchNextVart(CContext * pContext)
 	if(n == 0)
 		return 0;
 
-	if(m_pelx->MatchNext(pContext))
+	if(CRepeatElxT <x> :: m_pelx->MatchNext(pContext))
 	{
-		while(n < m_nvart && m_pelx->Match(pContext))
+		while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 			n ++;
 	}
 	else
@@ -3160,12 +3149,12 @@ inline int CGreedyElx::MatchNextVart(CContext * pContext)
 
 // indepelx.cpp: implementation of the CIndependentElx class.
 //
-inline CIndependentElx::CIndependentElx(ElxInterface * pelx)
+template <int x> CIndependentElxT <x> :: CIndependentElxT(ElxInterface * pelx)
 {
 	m_pelx = pelx;
 }
 
-inline int CIndependentElx::Match(CContext * pContext)
+template <int x> int CIndependentElxT <x> :: Match(CContext * pContext)
 {
 	int nbegin = pContext->m_nCurrentPos;
 	int nsize  = pContext->m_stack.GetSize();
@@ -3186,7 +3175,7 @@ inline int CIndependentElx::Match(CContext * pContext)
 	return bsucc;
 }
 
-inline int CIndependentElx::MatchNext(CContext * pContext)
+template <int x> int CIndependentElxT <x> :: MatchNext(CContext * pContext)
 {
 	int nbegin = 0, ncsize = 0;
 
@@ -3201,12 +3190,12 @@ inline int CIndependentElx::MatchNext(CContext * pContext)
 
 // listelx.cpp: implementation of the CListElx class.
 //
-inline CListElx::CListElx(int brightleft)
+template <int x> CListElxT <x> :: CListElxT(int brightleft)
 {
 	m_brightleft = brightleft;
 }
 
-inline int CListElx::Match(CContext * pContext)
+template <int x> int CListElxT <x> :: Match(CContext * pContext)
 {
 	if(m_elxlist.GetSize() == 0)
 		return 1;
@@ -3243,7 +3232,7 @@ inline int CListElx::Match(CContext * pContext)
 	return 1;
 }
 
-inline int CListElx::MatchNext(CContext * pContext)
+template <int x> int CListElxT <x> :: MatchNext(CContext * pContext)
 {
 	if(m_elxlist.GetSize() == 0)
 		return 0;
@@ -3290,37 +3279,75 @@ inline int CListElx::MatchNext(CContext * pContext)
 
 // mresult.cpp: implementation of the MatchResult class.
 //
-inline int MatchResult::IsMatched()
+template <int x> MatchResultT <x> :: MatchResultT(CContext * pContext, int nMaxNumber)
+{
+	if(pContext != 0)
+	{
+		m_result.Prepare(nMaxNumber * 2 + 3, -1);
+
+		// matched
+		m_result[0] = 1;
+		m_result[1] = nMaxNumber;
+
+		for(int n = 0; n <= nMaxNumber; n++)
+		{
+			int index = pContext->m_captureindex[n];
+			if( index < 0 ) continue;
+
+			// check
+			if( index >= pContext->m_capturestack.GetSize() || pContext->m_capturestack[index] != n )
+			{
+				// to find
+				index = pContext->m_capturestack.GetSize() - 4;
+				while(index >= 0 && pContext->m_capturestack[index] != n) index -= 4;
+
+				// new index
+				pContext->m_captureindex[n] = index;
+				if( index < 0 ) continue;
+			}
+
+			// check enclosed
+			int pos1 = pContext->m_capturestack[index + 1];
+			int pos2 = pContext->m_capturestack[index + 2];
+
+			// info
+			m_result[n*2 + 2] = pos1 < pos2 ? pos1 : pos2;
+			m_result[n*2 + 3] = pos1 < pos2 ? pos2 : pos1;
+		}
+	}
+}
+
+template <int x> inline int MatchResultT <x> :: IsMatched()
 {
 	return m_result.At(0, 0);
 }
 
-inline int MatchResult::MaxGroupNumber()
+template <int x> inline int MatchResultT <x> :: MaxGroupNumber()
 {
 	return m_result.At(1, 0);
 }
 
-inline int MatchResult::GetStart()
+template <int x> inline int MatchResultT <x> :: GetStart()
 {
 	return m_result.At(2, -1);
 }
 
-inline int MatchResult::GetEnd()
+template <int x> inline int MatchResultT <x> :: GetEnd()
 {
 	return m_result.At(3, -1);
 }
 
-inline int MatchResult::GetGroupStart(int nGroupNumber)
+template <int x> inline int MatchResultT <x> :: GetGroupStart(int nGroupNumber)
 {
 	return m_result.At(2 + nGroupNumber * 2, -1);
 }
 
-inline int MatchResult::GetGroupEnd(int nGroupNumber)
+template <int x> inline int MatchResultT <x> :: GetGroupEnd(int nGroupNumber)
 {
 	return m_result.At(2 + nGroupNumber * 2 + 1, -1);
 }
 
-inline MatchResult & MatchResult::operator = (const MatchResult & result)
+template <int x> MatchResultT <x> & MatchResultT <x> :: operator = (const MatchResultT <x> & result)
 {
 	m_result.Restore(0);
 	if(result.m_result.GetSize() > 0) m_result.Append(result.m_result.GetBuffer(), result.m_result.GetSize());
@@ -3330,11 +3357,11 @@ inline MatchResult & MatchResult::operator = (const MatchResult & result)
 
 // posselx.cpp: implementation of the CPossessiveElx class.
 //
-inline CPossessiveElx::CPossessiveElx(ElxInterface * pelx, int nmin, int nmax) : CGreedyElx(pelx, nmin, nmax)
+template <int x> CPossessiveElxT <x> :: CPossessiveElxT(ElxInterface * pelx, int nmin, int nmax) : CGreedyElxT <x> (pelx, nmin, nmax)
 {
 }
 
-inline int CPossessiveElx::Match(CContext * pContext)
+template <int x> int CPossessiveElxT <x> :: Match(CContext * pContext)
 {
 	int nbegin = pContext->m_nCurrentPos;
 	int nsize  = pContext->m_stack.GetSize();
@@ -3342,15 +3369,15 @@ inline int CPossessiveElx::Match(CContext * pContext)
 	int bsucc  = 1;
 
 	// match
-	if( ! MatchFixed(pContext) )
+	if( ! CRepeatElxT <x> :: MatchFixed(pContext) )
 	{
 		bsucc = 0;
 	}
 	else
 	{
-		while( ! MatchVart(pContext) )
+		while( ! CGreedyElxT <x> :: MatchVart(pContext) )
 		{
-			if( ! MatchNextFixed(pContext) )
+			if( ! CRepeatElxT <x> :: MatchNextFixed(pContext) )
 			{
 				bsucc = 0;
 				break;
@@ -3370,7 +3397,7 @@ inline int CPossessiveElx::Match(CContext * pContext)
 	return bsucc;
 }
 
-inline int CPossessiveElx::MatchNext(CContext * pContext)
+template <int x> int CPossessiveElxT <x> :: MatchNext(CContext * pContext)
 {
 	int nbegin = 0, ncsize = 0;
 
@@ -3385,62 +3412,62 @@ inline int CPossessiveElx::MatchNext(CContext * pContext)
 
 // reluctx.cpp: implementation of the CReluctantElx class.
 //
-inline CReluctantElx::CReluctantElx(ElxInterface * pelx, int nmin, int nmax) : CRepeatElx(pelx, nmin)
+template <int x> CReluctantElxT <x> :: CReluctantElxT(ElxInterface * pelx, int nmin, int nmax) : CRepeatElxT <x> (pelx, nmin)
 {
 	m_nvart = nmax - nmin;
 }
 
-inline int CReluctantElx::Match(CContext * pContext)
+template <int x> int CReluctantElxT <x> :: Match(CContext * pContext)
 {
-	if( ! MatchFixed(pContext) )
+	if( ! CRepeatElxT <x> :: MatchFixed(pContext) )
 		return 0;
 
 	while( ! MatchVart(pContext) )
 	{
-		if( ! MatchNextFixed(pContext) )
+		if( ! CRepeatElxT <x> :: MatchNextFixed(pContext) )
 			return 0;
 	}
 
 	return 1;
 }
 
-inline int CReluctantElx::MatchNext(CContext * pContext)
+template <int x> int CReluctantElxT <x> :: MatchNext(CContext * pContext)
 {
 	if( MatchNextVart(pContext) )
 		return 1;
 
-	if( ! MatchNextFixed(pContext) )
+	if( ! CRepeatElxT <x> :: MatchNextFixed(pContext) )
 		return 0;
 
 	while( ! MatchVart(pContext) )
 	{
-		if( ! MatchNextFixed(pContext) )
+		if( ! CRepeatElxT <x> :: MatchNextFixed(pContext) )
 			return 0;
 	}
 
 	return 1;
 }
 
-inline int CReluctantElx::MatchVart(CContext * pContext)
+template <int x> int CReluctantElxT <x> :: MatchVart(CContext * pContext)
 {
 	pContext->m_stack.Push(0);
 
 	return 1;
 }
 
-inline int CReluctantElx::MatchNextVart(CContext * pContext)
+template <int x> int CReluctantElxT <x> :: MatchNextVart(CContext * pContext)
 {
 	int n = 0;
 
 	pContext->m_stack.Pop(n);
 
-	if(n < m_nvart && m_pelx->Match(pContext))
+	if(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 	{
 		n ++;
 	}
 	else
 	{
-		while(n > 0 && ! m_pelx->MatchNext(pContext))
+		while(n > 0 && ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext))
 			n --;
 	}
 
@@ -3457,23 +3484,23 @@ inline int CReluctantElx::MatchNextVart(CContext * pContext)
 
 // repeatx.cpp: implementation of the CRepeatElx class.
 //
-inline CRepeatElx::CRepeatElx(ElxInterface * pelx, int ntimes)
+template <int x> CRepeatElxT <x> :: CRepeatElxT(ElxInterface * pelx, int ntimes)
 {
 	m_pelx   = pelx;
 	m_nfixed = ntimes;
 }
 
-inline int CRepeatElx::Match(CContext * pContext)
+template <int x> int CRepeatElxT <x> :: Match(CContext * pContext)
 {
 	return MatchFixed(pContext);
 }
 
-inline int CRepeatElx::MatchNext(CContext * pContext)
+template <int x> int CRepeatElxT <x> :: MatchNext(CContext * pContext)
 {
 	return MatchNextFixed(pContext);
 }
 
-inline int CRepeatElx::MatchFixed(CContext * pContext)
+template <int x> int CRepeatElxT <x> :: MatchFixed(CContext * pContext)
 {
 	if(m_nfixed == 0)
 		return 1;
@@ -3503,7 +3530,7 @@ inline int CRepeatElx::MatchFixed(CContext * pContext)
 	return 1;
 }
 
-inline int CRepeatElx::MatchNextFixed(CContext * pContext)
+template <int x> int CRepeatElxT <x> :: MatchNextFixed(CContext * pContext)
 {
 	if(m_nfixed == 0)
 		return 0;
