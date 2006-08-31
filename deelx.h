@@ -10,6 +10,8 @@
 // Author:  ∑ ŸŒ∞ (sswater shi)
 // sswater@gmail.com
 //
+// $Revision$
+//
 
 #ifndef __DEELX_REGEXP__H__
 #define __DEELX_REGEXP__H__
@@ -2686,7 +2688,7 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 			lastI = res.GetStart();
 
 			// middle
-			int delta = 2, nmatch = 0, nzindex = -1, i = 0;
+			int delta = 2, nmatch = 0;
 
 			switch(replaceto[res.GetStart() + 1])
 			{
@@ -2707,13 +2709,9 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 				break;
 
 			case RCHART('+'):
-				for(i = 0; i<pContext->m_capturestack.GetSize(); i+= 4)
+				for(nmatch = result->MaxGroupNumber(); nmatch >= 0; nmatch --)
 				{
-					if(pContext->m_capturestack[i+3] > nzindex)
-					{
-						nmatch  = pContext->m_capturestack[i];
-						nzindex = pContext->m_capturestack[i + 3];
-					}
+					if(result->GetGroupStart(nmatch) >= 0) break;
 				}
 				buf.Push(new StringRef(tstring + result->GetGroupStart(nmatch), result->GetGroupEnd(nmatch) - result->GetGroupStart(nmatch)));
 				break;
