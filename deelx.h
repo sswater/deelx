@@ -1258,7 +1258,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: Build(const CBufferRe
 	// connect recursive
 	for(i=0; i<m_recursivelist.GetSize(); i++)
 	{
-		if( m_recursivelist[i]->m_ndata < m_grouplist.GetSize() )
+		if( m_recursivelist[i]->m_ndata >= 0 && m_recursivelist[i]->m_ndata < m_grouplist.GetSize() )
 			m_recursivelist[i]->m_pelx = m_grouplist[m_recursivelist[i]->m_ndata];
 	}
 
@@ -1460,11 +1460,6 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 		break;
 
 	case RCHART('('):
-		if(m_nCharsetDepth > 0)
-		{
-			nex2 = CHART_INFO(ch, 0, m_nNextPos, delta);
-		}
-		else
 		{
 			CHART ch1 = m_pattern[m_nNextPos+1];
 			CHART ch2 = m_pattern[m_nNextPos+2];
@@ -1491,7 +1486,10 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 			}
 			else
 			{
-				nex2 = CHART_INFO(ch, 1, m_nNextPos, delta);
+				if(m_nCharsetDepth > 0)
+					nex2 = CHART_INFO(ch, 0, m_nNextPos, delta);
+				else
+					nex2 = CHART_INFO(ch, 1, m_nNextPos, delta);
 			}
 		}
 		break;
@@ -2202,7 +2200,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 			{
 				// flag
 				int newflags = flags;
-				while(curr != CHART_INFO(0, 1) && curr.ch != RCHART(':') && curr.ch != RCHART(')'))
+				while(curr != CHART_INFO(0, 1) && curr.ch != RCHART(':') && curr.ch != RCHART(')') && curr != CHART_INFO(RCHART('('), 1))
 				{
 					int tochange = 0;
 
@@ -2242,10 +2240,10 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 					MoveNext();
 				}
 
-				if(curr.ch == RCHART(':'))
+				if(curr.ch == RCHART(':') || curr == CHART_INFO(RCHART('('), 1))
 				{
 					// skip ':'
-					MoveNext();
+					if(curr.ch == RCHART(':')) MoveNext();
 
 					pElx = BuildAlternative(newflags);
 				}
