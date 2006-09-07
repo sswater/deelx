@@ -96,12 +96,12 @@ template <class ELT> int CBufferRefT <ELT> :: nCompareNoCase(const ELT * pcsz) c
 
 template <class ELT> inline int CBufferRefT <ELT> :: Compare(const ELT * pcsz) const
 {
-	return nCompare(pcsz) ? 1 : pcsz[m_nSize];
+	return nCompare(pcsz) ? 1 : (int)pcsz[m_nSize];
 }
 
 template <class ELT> inline int CBufferRefT <ELT> :: CompareNoCase(const ELT * pcsz) const
 {
-	return nCompareNoCase(pcsz) ? 1 : pcsz[m_nSize];
+	return nCompareNoCase(pcsz) ? 1 : (int)pcsz[m_nSize];
 }
 
 template <class ELT> inline ELT CBufferRefT <ELT> :: At(int nIndex, ELT def) const
