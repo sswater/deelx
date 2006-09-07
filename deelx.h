@@ -34,6 +34,8 @@ public:
 public:
 	int nCompare      (const ELT * pcsz) const;
 	int nCompareNoCase(const ELT * pcsz) const;
+	int  Compare      (const ELT * pcsz) const;
+	int  CompareNoCase(const ELT * pcsz) const;
 
 	ELT At          (int nIndex, ELT def = 0) const;
 	ELT operator [] (int nIndex) const;
@@ -92,6 +94,16 @@ template <class ELT> int CBufferRefT <ELT> :: nCompareNoCase(const ELT * pcsz) c
 	return 0;
 }
 
+template <class ELT> inline int CBufferRefT <ELT> :: Compare(const ELT * pcsz) const
+{
+	return nCompare(pcsz) ? 1 : pcsz[m_nSize];
+}
+
+template <class ELT> inline int CBufferRefT <ELT> :: CompareNoCase(const ELT * pcsz) const
+{
+	return nCompareNoCase(pcsz) ? 1 : pcsz[m_nSize];
+}
+
 template <class ELT> inline ELT CBufferRefT <ELT> :: At(int nIndex, ELT def) const
 {
 	return nIndex >= m_nSize ? def : m_pRef[nIndex];
@@ -104,7 +116,7 @@ template <class ELT> inline ELT CBufferRefT <ELT> :: operator [] (int nIndex) co
 
 template <class ELT> inline const ELT * CBufferRefT <ELT> :: GetBuffer() const
 {
-	return m_pRef;
+	static const ELT _def[] = {0}; return m_pRef ? m_pRef : _def;
 }
 
 template <class ELT> inline int CBufferRefT <ELT> :: GetSize() const
@@ -281,12 +293,12 @@ template <class ELT> inline int CBufferT <ELT> :: Peek(ELT & el) const
 
 template <class ELT> inline const ELT * CBufferT <ELT> :: GetBuffer() const
 {
-	return m_pBuffer;
+	static const ELT _def[] = {0}; return m_pBuffer ? m_pBuffer : _def;
 }
 
 template <class ELT> inline ELT * CBufferT <ELT> :: GetBuffer()
 {
-	return m_pBuffer;
+	static ELT _def[] = {0}; return m_pBuffer ? m_pBuffer : _def;
 }
 
 template <class ELT> ELT * CBufferT <ELT> :: Detach()
@@ -442,6 +454,8 @@ public:
 	int m_nnumber;
 	int m_brightleft;
 	int m_bignorecase;
+
+	CBufferT <CHART> m_szNamed;
 };
 
 //
@@ -456,6 +470,9 @@ template <class CHART> CBackrefElxT <CHART> :: CBackrefElxT(int nnumber, int bri
 
 template <class CHART> int CBackrefElxT <CHART> :: Match(CContext * pContext)
 {
+	// check number, for named
+	if( m_nnumber < 0 ) return 0;
+
 	int index = pContext->m_captureindex[m_nnumber];
 	if( index < 0 ) return 0;
 
@@ -640,7 +657,7 @@ template <class CHART> inline int CBoundaryElxT <CHART> :: IsWordChar(CHART ch)
 //
 // Bracket
 //
-template <int x> class CBracketElxT : public ElxInterface
+template <class CHART> class CBracketElxT : public ElxInterface  
 {
 public:
 	int Match    (CContext * pContext);
@@ -652,14 +669,93 @@ public:
 public:
 	int m_nnumber;
 	int m_bright;
+
+	CBufferT <CHART> m_szNamed;
 };
 
-typedef CBracketElxT <0> CBracketElx;
+template <class CHART> CBracketElxT <CHART> :: CBracketElxT(int nnumber, int bright)
+{
+	m_nnumber = nnumber;
+	m_bright  = bright;
+}
+
+template <class CHART> int CBracketElxT <CHART> :: Match(CContext * pContext)
+{
+	// check, for named
+	if(m_nnumber < 0) return 0;
+
+	if( ! m_bright )
+	{
+		pContext->m_captureindex.Prepare(m_nnumber, -1);
+		int index = pContext->m_captureindex[m_nnumber];
+
+		// check
+		if(index > 0 && index < pContext->m_capturestack.GetSize() && pContext->m_capturestack[index+2] < 0)
+		{
+			pContext->m_capturestack[index+3] --;
+			return 1;
+		}
+
+		// save
+		pContext->m_captureindex[m_nnumber] = pContext->m_capturestack.GetSize();
+
+		pContext->m_capturestack.Push(m_nnumber);
+		pContext->m_capturestack.Push(pContext->m_nCurrentPos);
+		pContext->m_capturestack.Push(-1);
+		pContext->m_capturestack.Push( 0); // z-index
+	}
+	else
+	{
+		// check
+		int index = pContext->m_captureindex[m_nnumber];
+
+		if(pContext->m_capturestack[index + 3] < 0)
+		{
+			pContext->m_capturestack[index + 3] ++;
+			return 1;
+		}
+
+		// save
+		pContext->m_capturestack[index + 2] = pContext->m_nCurrentPos;
+		pContext->m_capturestack[index + 3] = pContext->m_nParenZindex ++;
+	}
+
+	return 1;
+}
+
+template <class CHART> int CBracketElxT <CHART> :: MatchNext(CContext * pContext)
+{
+	int index = pContext->m_captureindex[m_nnumber];
+
+	if( ! m_bright )
+	{
+		if(pContext->m_capturestack[index + 3] < 0)
+		{
+			pContext->m_capturestack[index + 3] ++;
+			return 0;
+		}
+
+		pContext->m_capturestack.Restore(pContext->m_capturestack.GetSize() - 4);
+	}
+	else
+	{
+		if(pContext->m_capturestack[index + 3] < 0)
+		{
+			pContext->m_capturestack[index + 3] --;
+			return 0;
+		}
+
+		pContext->m_capturestack[index + 2] = -1;
+		pContext->m_capturestack[index + 3] =  0;
+	}
+
+	return 0;
+}
 
 //
 // Deletage
 //
-template <int x> class CDelegateElxT : public ElxInterface
+template <class CHART> class CDelegateElxT : public ElxInterface  
 {
 public:
 	int Match    (CContext * pContext);
@@ -670,10 +766,33 @@ public:
 
 public:
 	ElxInterface * m_pelx;
-	int m_ndata;
+	int m_ndata; // +0 : recursive to
+	             // -3 : named recursive
+
+	CBufferT <CHART> m_szNamed;
 };
 
-typedef CDelegateElxT <0> CDelegateElx;
+template <class CHART> CDelegateElxT <CHART> :: CDelegateElxT(int ndata)
+{
+	m_pelx  = 0;
+	m_ndata = ndata;
+}
+
+template <class CHART> int CDelegateElxT <CHART> :: Match(CContext * pContext)
+{
+	if(m_pelx != 0)
+		return m_pelx->Match(pContext);
+	else
+		return 1;
+}
+
+template <class CHART> int CDelegateElxT <CHART> :: MatchNext(CContext * pContext)
+{
+	if(m_pelx != 0)
+		return m_pelx->MatchNext(pContext);
+	else
+		return 0;
+}
 
 //
 // Empty
@@ -1153,11 +1272,17 @@ enum STOCKELX_ID_DEFINES
 	#define _REGEX_FLAGS_DEFINED
 #endif
 
+
 //
 // Builder T
 //
 template <class CHART> class CBuilderT
 {
+public:
+	typedef CDelegateElxT  <CHART> CDelegateElx;
+	typedef CBracketElxT   <CHART> CBracketElx;
+	typedef CBackrefElxT   <CHART> CBackrefElx;
+
 // Methods
 public:
 	ElxInterface * Build(const CBufferRefT <CHART> & pattern, int flags);
@@ -1172,10 +1297,13 @@ public:
 	ElxInterface * m_pTopElx;
 	int            m_nFlags;
 	int            m_nMaxNumber;
+	int            m_nNextNamed;
 
-	CBufferT <ElxInterface *> m_objlist;
-	CBufferT <ElxInterface *> m_grouplist;
-	CBufferT <CDelegateElx *> m_recursivelist;
+	CBufferT <ElxInterface  *> m_objlist;
+	CBufferT <ElxInterface  *> m_grouplist;
+	CBufferT <CDelegateElx  *> m_recursivelist;
+	CBufferT <CListElx      *> m_namedlist;
+	CBufferT <CBackrefElx   *> m_namedbackreflist;
 
 // CHART_INFO
 protected:
@@ -1218,6 +1346,7 @@ protected:
 	int m_nCharsetDepth;
 
 	ElxInterface * m_pStockElxs[STOCKELX_COUNT];
+	int GetNamedNumber(const CBufferRefT <CHART> & named);
 };
 
 //
@@ -1233,6 +1362,17 @@ template <class CHART> CBuilderT <CHART> :: ~CBuilderT()
 	Clear();
 }
 
+template <class CHART> int CBuilderT <CHART> :: GetNamedNumber(const CBufferRefT <CHART> & named)
+{
+	for(int i=0; i<m_namedlist.GetSize(); i++)
+	{
+		if( ! ((CBracketElx *)m_namedlist[i]->m_elxlist[0])->m_szNamed.CompareNoCase(named.GetBuffer()) )
+			return ((CBracketElx *)m_namedlist[i]->m_elxlist[0])->m_nnumber;
+	}
+
+	return -3;
+}
+
 template <class CHART> ElxInterface * CBuilderT <CHART> :: Build(const CBufferRefT <CHART> & pattern, int flags)
 {
 	// init
@@ -1240,10 +1380,13 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: Build(const CBufferRe
 	m_nNextPos      = 0;
 	m_nCharsetDepth = 0;
 	m_nMaxNumber    = 0;
+	m_nNextNamed    = 0;
 	m_nFlags        = flags;
 
-	m_grouplist    .Restore(0);
-	m_recursivelist.Restore(0);
+	m_grouplist         .Restore(0);
+	m_recursivelist     .Restore(0);
+	m_namedlist         .Restore(0);
+	m_namedbackreflist  .Restore(0);
 
 	int i;
 	for(i=0; i<3; i++) MoveNext();
@@ -1255,13 +1398,34 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: Build(const CBufferRe
 	m_grouplist.Prepare(0);
 	m_grouplist[0] = m_pTopElx;
 
+	// append named to unnamed
+	m_grouplist.Prepare(m_nMaxNumber + m_namedlist.GetSize());
+
+	for(i=0; i<m_namedlist.GetSize(); i++)
+	{
+		m_nMaxNumber ++;
+
+		((CBracketElx *)m_namedlist[i]->m_elxlist[0])->m_nnumber = m_nMaxNumber;
+		((CBracketElx *)m_namedlist[i]->m_elxlist[2])->m_nnumber = m_nMaxNumber;
+
+		m_grouplist[m_nMaxNumber] = m_namedlist[i];
+	}
+
 	// connect recursive
 	for(i=0; i<m_recursivelist.GetSize(); i++)
 	{
+		if( m_recursivelist[i]->m_ndata == -3 )
+			m_recursivelist[i]->m_ndata = GetNamedNumber(m_recursivelist[i]->m_szNamed);
+
 		if( m_recursivelist[i]->m_ndata >= 0 && m_recursivelist[i]->m_ndata < m_grouplist.GetSize() )
 			m_recursivelist[i]->m_pelx = m_grouplist[m_recursivelist[i]->m_ndata];
 	}
 
+	// named backref
+	for(i=0; i<m_namedbackreflist.GetSize(); i++)
+	{
+		m_namedbackreflist[i]->m_nnumber = GetNamedNumber(m_namedbackreflist[i]->m_szNamed);
+	}
 	return m_pTopElx;
 }
 
@@ -1352,6 +1516,7 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 			case RCHART('B'):
 			case RCHART('d'):
 			case RCHART('D'):
+			case RCHART('k'):
 				nex2 = CHART_INFO(ch1, 1, m_nNextPos, delta);
 				break;
 
@@ -1542,8 +1707,15 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 		break;
 
 	case RCHART(']'):
-		m_nCharsetDepth --;
-		nex2 = CHART_INFO(ch, 1, m_nNextPos, delta);
+		if(m_nCharsetDepth > 0)
+		{
+			m_nCharsetDepth --;
+			nex2 = CHART_INFO(ch, 1, m_nNextPos, delta);
+		}
+		else
+		{
+			nex2 = CHART_INFO(ch, 0, m_nNextPos, delta);
+		}
 		break;
 
 	case RCHART(':'):
@@ -2003,7 +2175,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildSimple(int & fla
 			}
 
 			// backref
-			if(vch == RCHART('\\'))
+			if(vch == RCHART('\\') || vch == RCHART('k'))
 			{
 				return BuildBackref(flags);
 			}
@@ -2092,7 +2264,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildCharset(int & fl
 
 				if(curr.type == 1 && (
 					ch == RCHART('.') || ch == RCHART('w') || ch == RCHART('W') || ch == RCHART('s') || ch == RCHART('S') || ch == RCHART('d') || ch == RCHART('D') ||
-					(ch == RCHART('[') && next ==CHART_INFO(RCHART(':'), 1))
+					(ch == RCHART('[') && next == CHART_INFO(RCHART(':'), 1))
 				))
 				{
 					pRange->m_embeds.Push(BuildCharset(flags));
@@ -2127,17 +2299,18 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildCharset(int & fl
 
 template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & flags)
 {
-	ElxInterface * pElx;
-
 	// skip '('
 	MoveNext();
 
 	if(curr == CHART_INFO(RCHART('?'), 1))
 	{
+		ElxInterface * pElx = 0;
+
 		// skip '?'
 		MoveNext();
 
 		int bNegative = 0;
+		CHART named_end = RCHART('>');
 
 		switch(curr.ch)
 		{
@@ -2152,18 +2325,59 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 			break;
 
 		case RCHART('<'):
-			MoveNext(); // skip '<'
-			switch(curr.ch)
+			switch(next.ch)
 			{
 			case RCHART('!'):
 				bNegative = 1;
 
 			case RCHART('='):
+				MoveNext(); // skip '<'
 				MoveNext(); // skip '!' or '='
-
-			default: // treat '(?<xxx)' as '(?<=xxx)'
-				pElx = Keep(new CAssertElx(BuildAlternative(flags | RIGHTTOLEFT), !bNegative));
+				{
+					pElx = Keep(new CAssertElx(BuildAlternative(flags | RIGHTTOLEFT), !bNegative));
+				}
 				break;
+
+			default: // named group
+				break;
+			}
+			// break if assertion // else named
+			if(pElx != 0) break;
+
+		case RCHART('P'):
+			if(curr.ch == RCHART('P')) MoveNext(); // skip 'P'
+
+		case RCHART('\''):
+			if     (curr.ch == RCHART('<' )) named_end = RCHART('>' );
+			else if(curr.ch == RCHART('\'')) named_end = RCHART('\'');
+			MoveNext(); // skip '<' or '\''
+			{
+				// named number
+				int nThisBackref = m_nNextNamed ++;
+
+				CListElx    * pList  = (CListElx    *)Keep(new CListElx(flags & RIGHTTOLEFT));
+				CBracketElx * pleft  = (CBracketElx *)Keep(new CBracketElx(-1, flags & RIGHTTOLEFT ? 1 : 0));
+				CBracketElx * pright = (CBracketElx *)Keep(new CBracketElx(-1, flags & RIGHTTOLEFT ? 0 : 1));
+
+				// save name
+				CBufferT <CHART> & name = pleft->m_szNamed;
+				while(curr.ch != RCHART(0) && curr.ch != named_end)
+				{
+					name.Append(curr.ch, 1);
+					MoveNext();
+				}
+				MoveNext(); // skip '>' or '\''
+
+				// left, center, right
+				pList->m_elxlist.Push(pleft);
+				pList->m_elxlist.Push(BuildAlternative(flags));
+				pList->m_elxlist.Push(pright);
+
+				// for recursive
+				m_namedlist.Prepare(nThisBackref);
+				m_namedlist[nThisBackref] = pList;
+
+				pElx = pList;
 			}
 			break;
 
@@ -2175,9 +2389,30 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 			break;
 
 		case RCHART('R'):
-			{
-				MoveNext(); // skip 'R'
+			MoveNext(); // skip 'R'
+			while(curr.ch != RCHART(0) && isspace(curr.ch)) MoveNext(); // skip space
 
+			if(curr.ch == RCHART('<') || curr.ch == RCHART('\''))
+			{
+				named_end = curr.ch == RCHART('<') ? RCHART('>') : RCHART('\'');
+				CDelegateElx * pDelegate = (CDelegateElx *)Keep(new CDelegateElx(-3));
+
+				MoveNext(); // skip '<' or '\\'
+
+				// save name
+				CBufferT <CHART> & name = pDelegate->m_szNamed;
+				while(curr.ch != RCHART(0) && curr.ch != named_end)
+				{
+					name.Append(curr.ch, 1);
+					MoveNext();
+				}
+				MoveNext(); // skip '>' or '\''
+
+				m_recursivelist.Push(pDelegate);
+				pElx = pDelegate;
+			}
+			else
+			{
 				CBufferT <char> rto;
 				while(curr.ch != RCHART(0) && curr.ch != RCHART(')'))
 				{
@@ -2191,7 +2426,6 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 				CDelegateElx * pDelegate = (CDelegateElx *)Keep(new CDelegateElx(rtono));
 
 				m_recursivelist.Push(pDelegate);
-
 				pElx = pDelegate;
 			}
 			break;
@@ -2257,36 +2491,31 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 			}
 			break;
 		}
+
+		MoveNext(); // skip ')'
+
+		return pElx;
 	}
 	else
 	{
-		// backref
+		// group and number
 		CListElx * pList = (CListElx *)Keep(new CListElx(flags & RIGHTTOLEFT));
-
 		int nThisBackref = ++ m_nMaxNumber;
 
-		// left
+		// left, center, right
 		pList->m_elxlist.Push(Keep(new CBracketElx(nThisBackref, flags & RIGHTTOLEFT ? 1 : 0)));
+		pList->m_elxlist.Push(BuildAlternative(flags));
+		pList->m_elxlist.Push(Keep(new CBracketElx(nThisBackref, flags & RIGHTTOLEFT ? 0 : 1)));
 
 		// for recursive
 		m_grouplist.Prepare(nThisBackref);
-
-		pElx = BuildAlternative(flags);
-		pList->m_elxlist.Push(pElx);
-
-		m_grouplist[nThisBackref] = pElx;
+		m_grouplist[nThisBackref] = pList;
 
 		// right
-		MoveNext(); // skip ')'
-
-		pList->m_elxlist.Push(Keep(new CBracketElx(nThisBackref, flags & RIGHTTOLEFT ? 0 : 1)));
+		MoveNext(); // skip ')' 
 
 		return pList;
 	}
-
-	MoveNext(); // skip ')'
-
-	return pElx;
 }
 
 template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildBoundary(int & flags)
@@ -2330,22 +2559,44 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildBoundary(int & f
 
 template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildBackref(int & flags)
 {
-	// skip '\\'
+	// skip '\\' or '\k'
 	MoveNext();
 
-	unsigned int nbackref = 0;
-
-	for(int i=0; i<3; i++)
+	if(curr.ch == RCHART('<') || curr.ch == RCHART('\''))
 	{
-		if(curr.ch >= RCHART('0') && curr.ch <= RCHART('9'))
-			nbackref = nbackref * 10 + (curr.ch - RCHART('0'));
-		else
-			break;
+		CHART named_end = curr.ch == RCHART('<') ? RCHART('>') : RCHART('\'');
+		CBackrefElxT <CHART> * pbackref = (CBackrefElxT <CHART> *)Keep(new CBackrefElxT <CHART> (-1, flags & RIGHTTOLEFT, flags & IGNORECASE));
 
-		MoveNext();
+		MoveNext(); // skip '<' or '\''
+
+		// save name
+		CBufferT <CHART> & name = pbackref->m_szNamed;
+		while(curr.ch != RCHART(0) && curr.ch != named_end)
+		{
+			name.Append(curr.ch, 1);
+			MoveNext();
+		}
+		MoveNext(); // skip '>' or '\''
+
+		m_namedbackreflist.Push(pbackref);
+		return pbackref;
 	}
+	else
+	{
+		unsigned int nbackref = 0;
 
-	return Keep(new CBackrefElxT <CHART> (nbackref, flags & RIGHTTOLEFT, flags & IGNORECASE));
+		for(int i=0; i<3; i++)
+		{
+			if(curr.ch >= RCHART('0') && curr.ch <= RCHART('9'))
+				nbackref = nbackref * 10 + (curr.ch - RCHART('0'));
+			else
+				break;
+
+			MoveNext();
+		}
+
+		return Keep(new CBackrefElxT <CHART> (nbackref, flags & RIGHTTOLEFT, flags & IGNORECASE));
+	}
 }
 
 //
@@ -2933,108 +3184,6 @@ template <int x> int CAssertElxT <x> :: MatchNext(CContext * pContext)
 	pContext->m_capturestack.Restore(ncsize);
 
 	return 0;
-}
-
-// bracketx.cpp: implementation of the CBracketElx class.
-//
-template <int x>  CBracketElxT <x> :: CBracketElxT(int nnumber, int bright)
-{
-	m_nnumber = nnumber;
-	m_bright  = bright;
-}
-
-template <int x> int CBracketElxT <x> :: Match(CContext * pContext)
-{
-	if( ! m_bright )
-	{
-		pContext->m_captureindex.Prepare(m_nnumber, -1);
-		int index = pContext->m_captureindex[m_nnumber];
-
-		// check
-		if(index > 0 && index < pContext->m_capturestack.GetSize() && pContext->m_capturestack[index+2] < 0)
-		{
-			pContext->m_capturestack[index+3] --;
-			return 1;
-		}
-
-		// save
-		pContext->m_captureindex[m_nnumber] = pContext->m_capturestack.GetSize();
-
-		pContext->m_capturestack.Push(m_nnumber);
-		pContext->m_capturestack.Push(pContext->m_nCurrentPos);
-		pContext->m_capturestack.Push(-1);
-		pContext->m_capturestack.Push( 0); // z-index
-	}
-	else
-	{
-		// check
-		int index = pContext->m_captureindex[m_nnumber];
-
-		if(pContext->m_capturestack[index + 3] < 0)
-		{
-			pContext->m_capturestack[index + 3] ++;
-			return 1;
-		}
-
-		// save
-		pContext->m_capturestack[index + 2] = pContext->m_nCurrentPos;
-		pContext->m_capturestack[index + 3] = pContext->m_nParenZindex ++;
-	}
-
-	return 1;
-}
-
-template <int x> int CBracketElxT <x> :: MatchNext(CContext * pContext)
-{
-	int index = pContext->m_captureindex[m_nnumber];
-
-	if( ! m_bright )
-	{
-		if(pContext->m_capturestack[index + 3] < 0)
-		{
-			pContext->m_capturestack[index + 3] ++;
-			return 0;
-		}
-
-		pContext->m_capturestack.Restore(pContext->m_capturestack.GetSize() - 4);
-	}
-	else
-	{
-		if(pContext->m_capturestack[index + 3] < 0)
-		{
-			pContext->m_capturestack[index + 3] --;
-			return 0;
-		}
-
-		pContext->m_capturestack[index + 2] = -1;
-		pContext->m_capturestack[index + 3] =  0;
-	}
-
-	return 0;
-}
-
-// delegatx.cpp: implementation of the CDelegateElx class.
-//
-template <int x> CDelegateElxT <x> :: CDelegateElxT(int ndata)
-{
-	m_pelx  = 0;
-	m_ndata = ndata;
-}
-
-template <int x> int CDelegateElxT <x> :: Match(CContext * pContext)
-{
-	if(m_pelx != 0)
-		return m_pelx->Match(pContext);
-	else
-		return 1;
-}
-
-template <int x> int CDelegateElxT <x> :: MatchNext(CContext * pContext)
-{
-	if(m_pelx != 0)
-		return m_pelx->MatchNext(pContext);
-	else
-		return 0;
 }
 
 // emptyelx.cpp: implementation of the CEmptyElx class.
