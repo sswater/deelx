@@ -1471,6 +1471,8 @@ protected:
 	CHART_INFO prev, curr, next, nex2;
 	int m_nNextPos;
 	int m_nCharsetDepth;
+	int m_bQuoted;
+	int (*m_quote_fun)(int);
 
 	ElxInterface * m_pStockElxs[STOCKELX_COUNT];
 	int GetNamedNumber(const CBufferRefT <CHART> & named);
@@ -1509,6 +1511,8 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: Build(const CBufferRe
 	m_nMaxNumber    = 0;
 	m_nNextNamed    = 0;
 	m_nFlags        = flags;
+	m_bQuoted       = 0;
+	m_quote_fun     = 0;
 
 	m_grouplist         .Restore(0);
 	m_recursivelist     .Restore(0);
@@ -1635,11 +1639,41 @@ template <class CHART> void CBuilderT <CHART> :: MoveNext()
 
 template <class CHART> int CBuilderT <CHART> :: GetNext2()
 {
-	int delta = 1;
-	nex2     = CHART_INFO(0, 0, m_nNextPos, 0);
+	// check length
+	if(m_nNextPos >= m_pattern.GetSize())
+	{
+		nex2 = CHART_INFO(0, 1, m_nNextPos, 0);
+		return 1;
+	}
 
-	CHART ch  = m_pattern[m_nNextPos];
+	int   delta = 1;
+	CHART ch    = m_pattern[m_nNextPos];
 
+	// if quoted
+	if(m_bQuoted)
+	{
+		if(ch == RCHART('\\'))
+		{
+			if(m_pattern[m_nNextPos + 1] == RCHART('E'))
+			{
+				m_quote_fun = 0;
+				m_bQuoted   = 0;
+				m_nNextPos += 2;
+				return 0;
+			}
+		}
+
+		if(m_quote_fun != 0)
+			nex2 = CHART_INFO((CHART)(*m_quote_fun)((int)ch), 0, m_nNextPos, delta);
+		else
+			nex2 = CHART_INFO(ch, 0, m_nNextPos, delta);
+
+		m_nNextPos += delta;
+
+		return 1;
+	}
+
+	// common
 	switch(ch)
 	{
 	case RCHART('\\'):
@@ -1734,6 +1768,27 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 				{
 					nex2 = CHART_INFO(ch1, 1, m_nNextPos, delta);
 					break;
+				}
+
+			case RCHART('L'):
+				if( ! m_quote_fun ) m_quote_fun = ::tolower;
+
+			case RCHART('U'):
+				if( ! m_quote_fun ) m_quote_fun = ::toupper;
+
+			case RCHART('Q'):
+				{
+					m_bQuoted   = 1;
+					m_nNextPos += 2;
+					return 0;
+				}
+
+			case RCHART('E'):
+				{
+					m_quote_fun = 0;
+					m_bQuoted   = 0;
+					m_nNextPos += 2;
+					return 0;
 				}
 
 			case 0:
