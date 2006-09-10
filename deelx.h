@@ -1520,21 +1520,37 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: Build(const CBufferRe
 
 	for(i=0; i<m_namedlist.GetSize(); i++)
 	{
-		int find_same_name = GetNamedNumber(((CBracketElx *)m_namedlist[i]->m_elxlist[0])->m_szNamed);
-		if( find_same_name >= 0)
+		CBracketElx * pleft  = (CBracketElx *)m_namedlist[i]->m_elxlist[0];
+		CBracketElx * pright = (CBracketElx *)m_namedlist[i]->m_elxlist[2];
+
+		// append
+		m_grouplist[m_nGroupCount ++] = m_namedlist[i];
+
+		if( pleft->m_nnumber > 0 )
+			continue;
+
+		// same name
+		int find_same_name = GetNamedNumber(pleft->m_szNamed);
+		if( find_same_name >= 0 )
 		{
-			((CBracketElx *)m_namedlist[i]->m_elxlist[0])->m_nnumber = find_same_name;
-			((CBracketElx *)m_namedlist[i]->m_elxlist[2])->m_nnumber = find_same_name;
+			pleft ->m_nnumber = find_same_name;
+			pright->m_nnumber = find_same_name;
 		}
 		else
 		{
 			m_nMaxNumber ++;
 
-			((CBracketElx *)m_namedlist[i]->m_elxlist[0])->m_nnumber = m_nMaxNumber;
-			((CBracketElx *)m_namedlist[i]->m_elxlist[2])->m_nnumber = m_nMaxNumber;
+			pleft ->m_nnumber = m_nMaxNumber;
+			pright->m_nnumber = m_nMaxNumber;
 		}
+	}
 
-		m_grouplist[m_nGroupCount ++] = m_namedlist[i];
+	for(i=1; i<m_nGroupCount; i++)
+	{
+		CBracketElx * pleft = (CBracketElx *)((CListElx*)m_grouplist[i])->m_elxlist[0];
+
+		if( pleft->m_nnumber > m_nMaxNumber )
+			m_nMaxNumber = pleft->m_nnumber;
 	}
 
 	// connect recursive
@@ -2550,12 +2566,27 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 
 				// save name
 				CBufferT <CHART> & name = pleft->m_szNamed;
+				CBufferT <char> num;
+
 				while(curr.ch != RCHART(0) && curr.ch != named_end)
 				{
 					name.Append(curr.ch, 1);
+					num .Append((char)curr.ch, 1);
 					MoveNext();
 				}
 				MoveNext(); // skip '>' or '\''
+
+				// check <num>
+				unsigned int number;
+				char ch;
+
+				if( sscanf(num.GetBuffer(), "%u%1s", &number, &ch) == 1 )
+				{
+					pleft ->m_nnumber = number;
+					pright->m_nnumber = number;
+
+					name.Release();
+				}
 
 				// left, center, right
 				pList->m_elxlist.Push(pleft);
