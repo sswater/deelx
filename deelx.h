@@ -471,22 +471,10 @@ template <class CHART> CBackrefElxT <CHART> :: CBackrefElxT(int nnumber, int bri
 template <class CHART> int CBackrefElxT <CHART> :: Match(CContext * pContext)
 {
 	// check number, for named
-	if( m_nnumber < 0 ) return 0;
+	if( m_nnumber < 0 || m_nnumber >= pContext->m_captureindex.GetSize() ) return 0;
 
 	int index = pContext->m_captureindex[m_nnumber];
 	if( index < 0 ) return 0;
-
-	// check
-	if( index >= pContext->m_capturestack.GetSize() || pContext->m_capturestack[index] != m_nnumber )
-	{
-		// to find
-		index = pContext->m_capturestack.GetSize() - 4;
-		while(index >= 0 && pContext->m_capturestack[index] != m_nnumber) index -= 4;
-
-		// new index
-		pContext->m_captureindex[m_nnumber] = index;
-		if( index < 0 ) return 0;
-	}
 
 	// check enclosed
 	int pos1 = pContext->m_capturestack[index + 1];
@@ -736,6 +724,13 @@ template <class CHART> int CBracketElxT <CHART> :: MatchNext(CContext * pContext
 		}
 
 		pContext->m_capturestack.Restore(pContext->m_capturestack.GetSize() - 4);
+
+		// to find
+		index = pContext->m_capturestack.GetSize() - 4;
+		while(index >= 0 && pContext->m_capturestack[index] != m_nnumber) index -= 4;
+
+		// new index
+		pContext->m_captureindex[m_nnumber] = index;
 	}
 	else
 	{
@@ -1239,18 +1234,6 @@ template <class CHART> int CConditionElxT <CHART> :: Match(CContext * pContext)
 
 			int index = pContext->m_captureindex[m_nnumber];
 			if( index < 0) break;
-
-			// check
-			if( index >= pContext->m_capturestack.GetSize() || pContext->m_capturestack[index] != m_nnumber )
-			{
-				// to find
-				index = pContext->m_capturestack.GetSize() - 4;
-				while(index >= 0 && pContext->m_capturestack[index] != m_nnumber) index -= 4;
-
-				// new index
-				pContext->m_captureindex[m_nnumber] = index;
-				if( index < 0 ) break;
-			}
 
 			// else valid
 			condition_yes = 1;
@@ -3536,10 +3519,21 @@ template <int x> int CGreedyElxT <x> :: MatchNext(CContext * pContext)
 
 template <int x> int CGreedyElxT <x> :: MatchVart(CContext * pContext)
 {
-	int n = 0;
+	int n      = 0;
+	int nbegin = pContext->m_nCurrentPos;
 
 	while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
+	{
+		while(pContext->m_nCurrentPos == nbegin)
+		{
+			if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
+		}
+
+		if(pContext->m_nCurrentPos == nbegin) break;
+
 		n ++;
+		nbegin = pContext->m_nCurrentPos;
+	}
 
 	pContext->m_stack.Push(n);
 
@@ -3549,18 +3543,11 @@ template <int x> int CGreedyElxT <x> :: MatchVart(CContext * pContext)
 template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext)
 {
 	int n = 0;
-
 	pContext->m_stack.Pop(n);
 
-	if(n == 0)
-		return 0;
+	if(n == 0) return 0;
 
-	if(CRepeatElxT <x> :: m_pelx->MatchNext(pContext))
-	{
-		while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
-			n ++;
-	}
-	else
+	if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) )
 	{
 		n --;
 	}
@@ -3717,18 +3704,6 @@ template <int x> MatchResultT <x> :: MatchResultT(CContext * pContext, int nMaxN
 			int index = pContext->m_captureindex[n];
 			if( index < 0 ) continue;
 
-			// check
-			if( index >= pContext->m_capturestack.GetSize() || pContext->m_capturestack[index] != n )
-			{
-				// to find
-				index = pContext->m_capturestack.GetSize() - 4;
-				while(index >= 0 && pContext->m_capturestack[index] != n) index -= 4;
-
-				// new index
-				pContext->m_captureindex[n] = index;
-				if( index < 0 ) continue;
-			}
-
 			// check enclosed
 			int pos1 = pContext->m_capturestack[index + 1];
 			int pos2 = pContext->m_capturestack[index + 2];
@@ -3880,29 +3855,47 @@ template <int x> int CReluctantElxT <x> :: MatchVart(CContext * pContext)
 
 template <int x> int CReluctantElxT <x> :: MatchNextVart(CContext * pContext)
 {
-	int n = 0;
+	int n = 0, nbegin = pContext->m_nCurrentPos;
 
 	pContext->m_stack.Pop(n);
 
 	if(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 	{
-		n ++;
-	}
-	else
-	{
-		while(n > 0 && ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext))
-			n --;
+		while(pContext->m_nCurrentPos == nbegin)
+		{
+			if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
+		}
+
+		if(pContext->m_nCurrentPos != nbegin)
+		{
+			n ++;
+
+			pContext->m_stack.Push(nbegin);
+			pContext->m_stack.Push(n);
+
+			return 1;
+		}
 	}
 
-	if(n > 0)
+	while(n > 0)
 	{
-		pContext->m_stack.Push(n);
-		return 1;
+		pContext->m_stack.Pop(nbegin);
+
+		while( CRepeatElxT <x> :: m_pelx->MatchNext(pContext) )
+		{
+			if(pContext->m_nCurrentPos != nbegin)
+			{
+				pContext->m_stack.Push(nbegin);
+				pContext->m_stack.Push(n);
+
+				return 1;
+			}
+		}
+
+		n --;
 	}
-	else
-	{
-		return 0;
-	}
+
+	return 0;
 }
 
 // repeatx.cpp: implementation of the CRepeatElx class.
