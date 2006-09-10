@@ -670,7 +670,7 @@ template <class CHART> CBracketElxT <CHART> :: CBracketElxT(int nnumber, int bri
 template <class CHART> int CBracketElxT <CHART> :: Match(CContext * pContext)
 {
 	// check, for named
-	if( m_nnumber < 0 || m_nnumber >= pContext->m_captureindex.GetSize() ) return 0;
+	if(m_nnumber < 0) return 0;
 
 	if( ! m_bright )
 	{
