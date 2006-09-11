@@ -1394,6 +1394,7 @@ public:
 // Methods
 public:
 	ElxInterface * Build(const CBufferRefT <CHART> & pattern, int flags);
+	int GetNamedNumber(const CBufferRefT <CHART> & named);
 	void Clear();
 
 public:
@@ -1458,7 +1459,6 @@ protected:
 	int (*m_quote_fun)(int);
 
 	ElxInterface * m_pStockElxs[STOCKELX_COUNT];
-	int GetNamedNumber(const CBufferRefT <CHART> & named);
 };
 
 //
@@ -2912,6 +2912,7 @@ public:
 	CContext * PrepareMatch(const CHART * tstring, int length, int start);
 	CHART * Replace(const CHART * tstring, const CHART * replaceto, int start = -1, int ntimes = -1, MatchResult * result = 0);
 	CHART * Replace(const CHART * tstring, int string_length, const CHART * replaceto, int to_length, int & result_length, int start = -1, int ntimes = -1, MatchResult * result = 0);
+	int GetNamedGroupNumber(const CHART * group_name);
 
 public:
 	static void ReleaseString (CHART    * tstring );
@@ -3142,6 +3143,11 @@ template <class CHART> CContext * CRegexpT <CHART> :: PrepareMatch(const CHART *
 	}
 
 	return pContext;
+}
+
+template <class CHART> inline int CRegexpT <CHART> :: GetNamedGroupNumber(const CHART * group_name)
+{
+	return m_builder.GetNamedNumber(group_name);
 }
 
 template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring, const CHART * replaceto, int start, int ntimes, MatchResult * result)
