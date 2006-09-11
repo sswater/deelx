@@ -114,9 +114,9 @@ template <class ELT> inline ELT CBufferRefT <ELT> :: operator [] (int nIndex) co
 	return nIndex >= m_nSize ? 0 : m_pRef[nIndex];
 }
 
-template <class ELT> inline const ELT * CBufferRefT <ELT> :: GetBuffer() const
+template <class ELT> const ELT * CBufferRefT <ELT> :: GetBuffer() const
 {
-	static const ELT _def[] = {0}; return m_pRef ? m_pRef : _def;
+	static const ELT * _def = {0}; return m_pRef ? m_pRef : _def;
 }
 
 template <class ELT> inline int CBufferRefT <ELT> :: GetSize() const
@@ -291,14 +291,14 @@ template <class ELT> inline int CBufferT <ELT> :: Peek(ELT & el) const
 	}
 }
 
-template <class ELT> inline const ELT * CBufferT <ELT> :: GetBuffer() const
+template <class ELT> const ELT * CBufferT <ELT> :: GetBuffer() const
 {
-	static const ELT _def[] = {0}; return m_pBuffer ? m_pBuffer : _def;
+	static const ELT * _def = {0}; return m_pBuffer ? m_pBuffer : _def;
 }
 
-template <class ELT> inline ELT * CBufferT <ELT> :: GetBuffer()
+template <class ELT> ELT * CBufferT <ELT> :: GetBuffer()
 {
-	static ELT _def[] = {0}; return m_pBuffer ? m_pBuffer : _def;
+	static const ELT * _def = {0}; return m_pBuffer ? m_pBuffer : (ELT *)_def;
 }
 
 template <class ELT> ELT * CBufferT <ELT> :: Detach()
@@ -1252,7 +1252,7 @@ template <class CHART> int CConditionElxT <CHART> :: Match(CContext * pContext)
 	}
 
 	// elx result
-	int bsucc = 0;
+	int bsucc;
 	if( condition_yes )
 		bsucc = m_pelxyes == 0 ? 1 : m_pelxyes->Match(pContext);
 	else
@@ -1280,7 +1280,7 @@ template <class CHART> int CConditionElxT <CHART> :: MatchNext(CContext * pConte
 	pContext->m_stack.Pop(ncsize);
 
 	// elx result
-	int bsucc = 0;
+	int bsucc;
 	if( condition_yes )
 		bsucc = m_pelxyes == 0 ? 0 : m_pelxyes->MatchNext(pContext);
 	else
