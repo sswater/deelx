@@ -116,7 +116,7 @@ template <class ELT> inline ELT CBufferRefT <ELT> :: operator [] (int nIndex) co
 
 template <class ELT> const ELT * CBufferRefT <ELT> :: GetBuffer() const
 {
-	static const ELT * _def = {0}; return m_pRef ? m_pRef : _def;
+	static const ELT _def[] = {0}; return m_pRef ? m_pRef : _def;
 }
 
 template <class ELT> inline int CBufferRefT <ELT> :: GetSize() const
@@ -293,12 +293,12 @@ template <class ELT> inline int CBufferT <ELT> :: Peek(ELT & el) const
 
 template <class ELT> const ELT * CBufferT <ELT> :: GetBuffer() const
 {
-	static const ELT * _def = {0}; return m_pBuffer ? m_pBuffer : _def;
+	static const ELT _def[] = {0}; return m_pBuffer ? m_pBuffer : _def;
 }
 
 template <class ELT> ELT * CBufferT <ELT> :: GetBuffer()
 {
-	static const ELT * _def = {0}; return m_pBuffer ? m_pBuffer : (ELT *)_def;
+	static const ELT _def[] = {0}; return m_pBuffer ? m_pBuffer : (ELT *)_def;
 }
 
 template <class ELT> ELT * CBufferT <ELT> :: Detach()
