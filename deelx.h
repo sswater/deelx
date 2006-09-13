@@ -108,12 +108,12 @@ template <class ELT> inline int CBufferRefT <ELT> :: CompareNoCase(const ELT * p
 
 template <class ELT> inline int CBufferRefT <ELT> :: Compare(const CBufferRefT <ELT> & cref) const
 {
-	return nCompare(cref.GetBuffer()) ? 1 : m_nSize != cref.m_nSize;
+	return m_nSize == cref.m_nSize ? nCompare(cref.GetBuffer()) : 1;
 }
 
 template <class ELT> inline int CBufferRefT <ELT> :: CompareNoCase(const CBufferRefT <ELT> & cref) const
 {
-	return nCompareNoCase(cref.GetBuffer()) ? 1 : m_nSize != cref.m_nSize;
+	return m_nSize == cref.m_nSize ? nCompareNoCase(cref.GetBuffer()) : 1;
 }
 
 template <class ELT> inline ELT CBufferRefT <ELT> :: At(int nIndex, ELT def) const
@@ -1735,6 +1735,7 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 			*/
 
 			case RCHART('x'):
+				if(m_pattern[m_nNextPos+2] != '{')
 				{
 					int red = 0;
 					unsigned int ch2 = Hex2Int(m_pattern.GetBuffer() + m_nNextPos + 2, 2, red);
@@ -1745,10 +1746,12 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 						nex2 = CHART_INFO(RCHART(ch2), 0, m_nNextPos, delta);
 					else
 						nex2 = CHART_INFO(ch1, 0, m_nNextPos, delta);
-				}
+
 				break;
+				}
 
 			case RCHART('u'):
+				if(m_pattern[m_nNextPos+2] != '{')
 				{
 					int red = 0;
 					unsigned int ch2 = Hex2Int(m_pattern.GetBuffer() + m_nNextPos + 2, 4, red);
@@ -1759,6 +1762,20 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 						nex2 = CHART_INFO(RCHART(ch2), 0, m_nNextPos, delta);
 					else
 						nex2 = CHART_INFO(ch1, 0, m_nNextPos, delta);
+				}
+				else
+				{
+					int red = 0;
+					unsigned int ch2 = Hex2Int(m_pattern.GetBuffer() + m_nNextPos + 3, sizeof(int) * 2, red);
+
+					delta += red;
+
+					while(m_nNextPos + delta < m_pattern.GetSize() && m_pattern.At(m_nNextPos + delta) != RCHART('}'))
+						delta ++;
+
+					delta ++; // skip '}'
+
+					nex2 = CHART_INFO(RCHART(ch2), 0, m_nNextPos, delta);
 				}
 				break;
 
