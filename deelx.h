@@ -36,6 +36,8 @@ public:
 	int nCompareNoCase(const ELT * pcsz) const;
 	int  Compare      (const ELT * pcsz) const;
 	int  CompareNoCase(const ELT * pcsz) const;
+	int  Compare      (const CBufferRefT <ELT> &) const;
+	int  CompareNoCase(const CBufferRefT <ELT> &) const;
 
 	ELT At          (int nIndex, ELT def = 0) const;
 	ELT operator [] (int nIndex) const;
@@ -102,6 +104,16 @@ template <class ELT> inline int CBufferRefT <ELT> :: Compare(const ELT * pcsz) c
 template <class ELT> inline int CBufferRefT <ELT> :: CompareNoCase(const ELT * pcsz) const
 {
 	return nCompareNoCase(pcsz) ? 1 : (int)pcsz[m_nSize];
+}
+
+template <class ELT> inline int CBufferRefT <ELT> :: Compare(const CBufferRefT <ELT> & cref) const
+{
+	return nCompare(cref.GetBuffer()) ? 1 : m_nSize != cref.m_nSize;
+}
+
+template <class ELT> inline int CBufferRefT <ELT> :: CompareNoCase(const CBufferRefT <ELT> & cref) const
+{
+	return nCompareNoCase(cref.GetBuffer()) ? 1 : m_nSize != cref.m_nSize;
 }
 
 template <class ELT> inline ELT CBufferRefT <ELT> :: At(int nIndex, ELT def) const
@@ -1478,7 +1490,7 @@ template <class CHART> int CBuilderT <CHART> :: GetNamedNumber(const CBufferRefT
 {
 	for(int i=0; i<m_namedlist.GetSize(); i++)
 	{
-		if( ! ((CBracketElx *)m_namedlist[i]->m_elxlist[0])->m_szNamed.CompareNoCase(named.GetBuffer()) )
+		if( ! ((CBracketElx *)m_namedlist[i]->m_elxlist[0])->m_szNamed.CompareNoCase(named) )
 			return ((CBracketElx *)m_namedlist[i]->m_elxlist[0])->m_nnumber;
 	}
 
@@ -1701,6 +1713,7 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 			case RCHART('d'):
 			case RCHART('D'):
 			case RCHART('k'):
+			case RCHART('g'):
 				nex2 = CHART_INFO(ch1, 1, m_nNextPos, delta);
 				break;
 
@@ -2380,7 +2393,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildSimple(int & fla
 			}
 
 			// backref
-			if(vch == RCHART('\\') || vch == RCHART('k'))
+			if(vch == RCHART('\\') || vch == RCHART('k') || vch == RCHART('g'))
 			{
 				return BuildBackref(flags);
 			}
@@ -2851,7 +2864,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildBoundary(int & f
 
 template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildBackref(int & flags)
 {
-	// skip '\\' or '\k'
+	// skip '\\' or '\k' or '\g'
 	MoveNext();
 
 	if(curr.ch == RCHART('<') || curr.ch == RCHART('\''))
@@ -3175,7 +3188,7 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 
 	CBufferT <StringRef *> buffer, buf;
 
-	static const CHART rtoptn[] = { RCHART('\\'), RCHART('$' ), RCHART('('), RCHART('?'), RCHART(':'), RCHART('[' ), RCHART('$' ), RCHART('&' ), RCHART('`' ), RCHART('\''), RCHART('+'), RCHART('_' ), RCHART('\\'), RCHART('d'), RCHART(']'), RCHART(')' ), RCHART('\0') };
+	static const CHART rtoptn[] = { RCHART('\\'), RCHART('$' ), RCHART('('), RCHART('?'), RCHART(':'), RCHART('[' ), RCHART('$' ), RCHART('&' ), RCHART('`' ), RCHART('\''), RCHART('+'), RCHART('_' ), RCHART('\\'), RCHART('d'), RCHART(']'), RCHART('|'), RCHART('\\'), RCHART('{'), RCHART('.'), RCHART('*'), RCHART('?'), RCHART('\\'), RCHART('}'), RCHART(')' ), RCHART('\0') };
 	static int   rtoptnlen      = StringRef(rtoptn).GetSize();
 	static CRegexpT <CHART> rtoreg(rtoptn, rtoptnlen, 0);
 
@@ -3265,6 +3278,16 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 
 			case RCHART('_'):
 				buf.Push(new StringRef(tstring, string_length));
+				break;
+
+			case RCHART('{'):
+				delta  = res.GetEnd() - res.GetStart();
+				nmatch = m_builder.GetNamedNumber(StringRef(replaceto + (res.GetStart() + 2), delta - 3));
+
+				if(nmatch > 0 && nmatch <= m_builder.m_nMaxNumber)
+					buf.Push(new StringRef(tstring + result->GetGroupStart(nmatch), result->GetGroupEnd(nmatch) - result->GetGroupStart(nmatch)));
+				else
+					buf.Push(new StringRef(replaceto + res.GetStart(), delta));
 				break;
 
 			default:
