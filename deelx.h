@@ -2933,15 +2933,15 @@ public:
 	void Compile(const CHART * pattern, int length, int flags);
 
 public:
-	MatchResult MatchExact(const CHART * tstring);
-	MatchResult MatchExact(const CHART * tstring, int length);
-	MatchResult Match(const CHART * tstring, int start = -1);
-	MatchResult Match(const CHART * tstring, int length, int start);
+	MatchResult MatchExact(const CHART * tstring, CContext * pContext = 0);
+	MatchResult MatchExact(const CHART * tstring, int length, CContext * pContext = 0);
+	MatchResult Match(const CHART * tstring, int start = -1, CContext * pContext = 0);
+	MatchResult Match(const CHART * tstring, int length, int start, CContext * pContext = 0);
 	MatchResult Match(CContext * pContext);
-	CContext * PrepareMatch(const CHART * tstring, int start = -1);
-	CContext * PrepareMatch(const CHART * tstring, int length, int start);
-	CHART * Replace(const CHART * tstring, const CHART * replaceto, int start = -1, int ntimes = -1, MatchResult * result = 0);
-	CHART * Replace(const CHART * tstring, int string_length, const CHART * replaceto, int to_length, int & result_length, int start = -1, int ntimes = -1, MatchResult * result = 0);
+	CContext * PrepareMatch(const CHART * tstring, int start = -1, CContext * pContext = 0);
+	CContext * PrepareMatch(const CHART * tstring, int length, int start, CContext * pContext = 0);
+	CHART * Replace(const CHART * tstring, const CHART * replaceto, int start = -1, int ntimes = -1, MatchResult * result = 0, CContext * pContext = 0);
+	CHART * Replace(const CHART * tstring, int string_length, const CHART * replaceto, int to_length, int & result_length, int start = -1, int ntimes = -1, MatchResult * result = 0, CContext * pContext = 0);
 	int GetNamedGroupNumber(const CHART * group_name);
 
 public:
@@ -2976,12 +2976,12 @@ template <class CHART> void CRegexpT <CHART> :: Compile(const CHART * pattern, i
 	if(pattern != 0) m_builder.Build(CBufferRefT<CHART>(pattern, length), flags);
 }
 
-template <class CHART> inline MatchResult CRegexpT <CHART> :: MatchExact(const CHART * tstring)
+template <class CHART> inline MatchResult CRegexpT <CHART> :: MatchExact(const CHART * tstring, CContext * pContext)
 {
-	return MatchExact(tstring, CBufferRefT<CHART>(tstring).GetSize());
+	return MatchExact(tstring, CBufferRefT<CHART>(tstring).GetSize(), pContext);
 }
 
-template <class CHART> MatchResult CRegexpT <CHART> :: MatchExact(const CHART * tstring, int length)
+template <class CHART> MatchResult CRegexpT <CHART> :: MatchExact(const CHART * tstring, int length, CContext * pContext)
 {
 	if(m_builder.m_pTopElx == 0)
 		return 0;
@@ -2990,94 +2990,100 @@ template <class CHART> MatchResult CRegexpT <CHART> :: MatchExact(const CHART * 
 	int endpos = 0;
 
 	CContext context;
+	if(pContext == 0) pContext = &context;
 
-	context.m_nParenZindex  = 0;
-	context.m_nLastBeginPos = -1;
-	context.m_pMatchString  = (void*)tstring;
-	context.m_pMatchStringLength = length;
+	pContext->m_stack.Restore(0);
+	pContext->m_capturestack.Restore(0);
+	pContext->m_captureindex.Restore(0);
+
+	pContext->m_nParenZindex  = 0;
+	pContext->m_nLastBeginPos = -1;
+	pContext->m_pMatchString  = (void*)tstring;
+	pContext->m_pMatchStringLength = length;
 
 	if(m_builder.m_nFlags & RIGHTTOLEFT)
 	{
-		context.m_nBeginPos   = length;
-		context.m_nCurrentPos = length;
+		pContext->m_nBeginPos   = length;
+		pContext->m_nCurrentPos = length;
 		endpos = 0;
 	}
 	else
 	{
-		context.m_nBeginPos   = 0;
-		context.m_nCurrentPos = 0;
+		pContext->m_nBeginPos   = 0;
+		pContext->m_nCurrentPos = 0;
 		endpos = length;
 	}
 
-	context.m_captureindex.Prepare(m_builder.m_nMaxNumber, -1);
-	context.m_captureindex[0] = 0;
-	context.m_capturestack.Push(0);
-	context.m_capturestack.Push(context.m_nCurrentPos);
-	context.m_capturestack.Push(-1);
-	context.m_capturestack.Push(-1);
+	pContext->m_captureindex.Prepare(m_builder.m_nMaxNumber, -1);
+	pContext->m_captureindex[0] = 0;
+	pContext->m_capturestack.Push(0);
+	pContext->m_capturestack.Push(pContext->m_nCurrentPos);
+	pContext->m_capturestack.Push(-1);
+	pContext->m_capturestack.Push(-1);
 
 	// match
-	if( ! m_builder.m_pTopElx->Match( &context ) )
+	if( ! m_builder.m_pTopElx->Match( pContext ) )
 		return 0;
 	else
 	{
-		while( context.m_nCurrentPos != endpos )
+		while( pContext->m_nCurrentPos != endpos )
 		{
-			if( ! m_builder.m_pTopElx->MatchNext( &context ) )
+			if( ! m_builder.m_pTopElx->MatchNext( pContext ) )
 				return 0;
 			else
 			{
-				if( context.m_nLastBeginPos == context.m_nBeginPos && context.m_nBeginPos == context.m_nCurrentPos )
+				if( pContext->m_nLastBeginPos == pContext->m_nBeginPos && pContext->m_nBeginPos == pContext->m_nCurrentPos )
 					return 0;
 				else
-					context.m_nLastBeginPos = context.m_nCurrentPos;
+					pContext->m_nLastBeginPos = pContext->m_nCurrentPos;
 			}
 		}
 
 		// end pos
-		context.m_capturestack[2] = context.m_nCurrentPos;
+		pContext->m_capturestack[2] = pContext->m_nCurrentPos;
 
-		return MatchResult( &context, m_builder.m_nMaxNumber );
+		return MatchResult( pContext, m_builder.m_nMaxNumber );
 	}
 }
 
-template <class CHART> MatchResult CRegexpT <CHART> :: Match(const CHART * tstring, int start)
+template <class CHART> MatchResult CRegexpT <CHART> :: Match(const CHART * tstring, int start, CContext * pContext)
 {
-	return Match(tstring, CBufferRefT<CHART>(tstring).GetSize(), start);
+	return Match(tstring, CBufferRefT<CHART>(tstring).GetSize(), start, pContext);
 }
 
-template <class CHART> MatchResult CRegexpT <CHART> :: Match(const CHART * tstring, int length, int start)
+template <class CHART> MatchResult CRegexpT <CHART> :: Match(const CHART * tstring, int length, int start, CContext * pContext)
 {
 	if(m_builder.m_pTopElx == 0)
 		return 0;
 
 	CContext context;
+	if(pContext == 0) pContext = &context;
 
-	context.m_nParenZindex  =  0;
-	context.m_nLastBeginPos = -1;
-	context.m_pMatchString  = (void*)tstring;
-	context.m_pMatchStringLength = length;
+	pContext->m_nParenZindex  =  0;
+	pContext->m_nLastBeginPos = -1;
+	pContext->m_pMatchString  = (void*)tstring;
+	pContext->m_pMatchStringLength = length;
 
 	if(start < 0)
 	{
 		if(m_builder.m_nFlags & RIGHTTOLEFT)
 		{
-			context.m_nBeginPos   = length;
-			context.m_nCurrentPos = length;
+			pContext->m_nBeginPos   = length;
+			pContext->m_nCurrentPos = length;
 		}
 		else
 		{
-			context.m_nBeginPos   = 0;
-			context.m_nCurrentPos = 0;
+			pContext->m_nBeginPos   = 0;
+			pContext->m_nCurrentPos = 0;
 		}
 	}
 	else
 	{
-		context.m_nBeginPos   = start;
-		context.m_nCurrentPos = start;
+		pContext->m_nBeginPos   = start;
+		pContext->m_nCurrentPos = start;
 	}
 
-	return Match( &context );
+	return Match( pContext );
 }
 
 template <class CHART> MatchResult CRegexpT <CHART> :: Match(CContext * pContext)
@@ -3098,13 +3104,14 @@ template <class CHART> MatchResult CRegexpT <CHART> :: Match(CContext * pContext
 		delta  = 1;
 	}
 
-	pContext->m_captureindex.Prepare(m_builder.m_nMaxNumber, -1);
-	pContext->m_captureindex[0] = 0;
-
 	while(pContext->m_nCurrentPos != endpos)
 	{
+		pContext->m_captureindex.Restore(0);
 		pContext->m_stack       .Restore(0);
 		pContext->m_capturestack.Restore(0);
+
+		pContext->m_captureindex.Prepare(m_builder.m_nMaxNumber, -1);
+		pContext->m_captureindex[0] = 0;
 		pContext->m_capturestack.Push(0);
 		pContext->m_capturestack.Push(pContext->m_nCurrentPos);
 		pContext->m_capturestack.Push(-1);
@@ -3136,17 +3143,17 @@ template <class CHART> MatchResult CRegexpT <CHART> :: Match(CContext * pContext
 	return 0;
 }
 
-template <class CHART> inline CContext * CRegexpT <CHART> :: PrepareMatch(const CHART * tstring, int start)
+template <class CHART> inline CContext * CRegexpT <CHART> :: PrepareMatch(const CHART * tstring, int start, CContext * pContext)
 {
-	return PrepareMatch(tstring, CBufferRefT<CHART>(tstring).GetSize(), start);
+	return PrepareMatch(tstring, CBufferRefT<CHART>(tstring).GetSize(), start, pContext);
 }
 
-template <class CHART> CContext * CRegexpT <CHART> :: PrepareMatch(const CHART * tstring, int length, int start)
+template <class CHART> CContext * CRegexpT <CHART> :: PrepareMatch(const CHART * tstring, int length, int start, CContext * pContext)
 {
 	if(m_builder.m_pTopElx == 0)
 		return 0;
 
-	CContext * pContext = new CContext();
+	if(pContext == 0) pContext = new CContext();
 
 	pContext->m_nParenZindex  =  0;
 	pContext->m_nLastBeginPos = -1;
@@ -3180,13 +3187,13 @@ template <class CHART> inline int CRegexpT <CHART> :: GetNamedGroupNumber(const 
 	return m_builder.GetNamedNumber(group_name);
 }
 
-template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring, const CHART * replaceto, int start, int ntimes, MatchResult * result)
+template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring, const CHART * replaceto, int start, int ntimes, MatchResult * result, CContext * pContext)
 {
 	int result_length = 0;
-	return Replace(tstring, CBufferRefT<CHART>(tstring).GetSize(), replaceto, CBufferRefT<CHART>(replaceto).GetSize(), result_length, start, ntimes, result);
+	return Replace(tstring, CBufferRefT<CHART>(tstring).GetSize(), replaceto, CBufferRefT<CHART>(replaceto).GetSize(), result_length, start, ntimes, result, pContext);
 }
 
-template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring, int string_length, const CHART * replaceto, int to_length, int & result_length, int start, int ntimes, MatchResult * remote_result)
+template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring, int string_length, const CHART * replaceto, int to_length, int & result_length, int start, int ntimes, MatchResult * remote_result, CContext * oContext)
 {
 	typedef CBufferRefT <CHART> StringRef;
 
@@ -3195,7 +3202,7 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 	if(m_builder.m_pTopElx == 0) return 0;
 
 	// Prepare
-	CContext * pContext = PrepareMatch(tstring, string_length, start);
+	CContext * pContext = PrepareMatch(tstring, string_length, start, oContext);
 
 	int flags     = m_builder.m_nFlags;
 	int lastIndex = (flags & RIGHTTOLEFT) ? string_length : 0;
@@ -3378,7 +3385,7 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 		if(lastIndex < endpos) buffer.Push(new StringRef(tstring + lastIndex, endpos - lastIndex));
 	}
 
-	ReleaseContext(pContext);
+	if(oContext == 0) ReleaseContext(pContext);
 
 	// join string
 	result_length = 0;
