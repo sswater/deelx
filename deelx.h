@@ -2283,7 +2283,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRepeat(int & fla
 			MoveNext();
 
 			// read
-			int red = sscanf(re.GetBuffer() ? re.GetBuffer() : "", "%u%1s%u", &nMin, &comma, &nMax);
+			int red = sscanf(re.GetBuffer(), "%u%1s%u", &nMin, &comma, &nMax);
 
 			// check
 			if(red  <=  1 ) nMax = nMin;
@@ -2677,7 +2677,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 				}
 
 				unsigned int rtono = 0;
-				sscanf(rto.GetBuffer() ? rto.GetBuffer() : "", "%u", &rtono);
+				sscanf(rto.GetBuffer(), "%u", &rtono);
 
 				CDelegateElx * pDelegate = (CDelegateElx *)Keep(new CDelegateElx(rtono));
 
@@ -2759,6 +2759,26 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 			break;
 
 		default:
+			while(curr.ch != RCHART(0) && isspace(curr.ch)) MoveNext(); // skip space
+
+			if(curr.ch >= RCHART('0') && curr.ch <= RCHART('9')) // recursive (?1) => (?R1)
+			{
+				CBufferT <char> rto;
+				while(curr.ch != RCHART(0) && curr.ch != RCHART(')'))
+				{
+					rto.Append((char)curr.ch, 1);
+					MoveNext();
+				}
+
+				unsigned int rtono = 0;
+				sscanf(rto.GetBuffer(), "%u", &rtono);
+
+				CDelegateElx * pDelegate = (CDelegateElx *)Keep(new CDelegateElx(rtono));
+
+				m_recursivelist.Push(pDelegate);
+				pElx = pDelegate;
+			}
+			else
 			{
 				// flag
 				int newflags = flags;
