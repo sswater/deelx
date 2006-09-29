@@ -1,6 +1,6 @@
 // deelx.h
 //
-// DEELX Regular Expression Engine (v1.0)
+// DEELX Regular Expression Engine (v1.2)
 //
 // Copyright 2006 (c) RegExLab.com
 // All Rights Reserved.
