@@ -1452,6 +1452,7 @@ protected:
 
 protected:
 	static unsigned int Hex2Int(const CHART * pcsz, int length, int & used);
+	static int ReadDec(char * & str, unsigned int & dec);
 	void MoveNext();
 	int  GetNext2();
 
@@ -2261,7 +2262,6 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRepeat(int & fla
 
 	// quantifier range
 	unsigned int nMin = 0, nMax = 0;
-	char comma;
 
 	switch(curr.ch)
 	{
@@ -2275,7 +2275,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRepeat(int & fla
 			// copy
 			while(curr != CHART_INFO(0, 1) && curr != CHART_INFO(RCHART('}'), 1))
 			{
-				re.Append((char)curr.ch, 1);
+				re.Append(((curr.ch & (CHART)0xff) == curr.ch) ? (char)curr.ch : 0, 1);
 				MoveNext();
 			}
 
@@ -2283,7 +2283,22 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRepeat(int & fla
 			MoveNext();
 
 			// read
-			int red = sscanf(re.GetBuffer(), "%u%1s%u", &nMin, &comma, &nMax);
+			int red;
+			char * str = re.GetBuffer();
+
+			if( ! ReadDec(str, nMin) )
+				red = 0;
+			else if( *str != ',' )
+				red = 1;
+			else
+			{
+				str ++;
+
+				if( ! ReadDec(str, nMax) )
+					red = 2;
+				else
+					red = 3;
+			}
 
 			// check
 			if(red  <=  1 ) nMax = nMin;
@@ -2478,7 +2493,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildCharset(int & fl
 				CBufferT <char> posix;
 
 				do {
-					posix.Append((char)curr.ch, 1);
+					posix.Append(((curr.ch & (CHART)0xff) == curr.ch) ? (char)curr.ch : 0, 1);
 					MoveNext();
 				}
 				while(curr.ch != RCHART(0) && curr != CHART_INFO(RCHART(']'), 1));
@@ -2607,16 +2622,16 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 				while(curr.ch != RCHART(0) && curr.ch != named_end)
 				{
 					name.Append(curr.ch, 1);
-					num .Append((char)curr.ch, 1);
+					num .Append(((curr.ch & (CHART)0xff) == curr.ch) ? (char)curr.ch : 0, 1);
 					MoveNext();
 				}
 				MoveNext(); // skip '>' or '\''
 
 				// check <num>
 				unsigned int number;
-				char ch;
+				char * str = num.GetBuffer();
 
-				if( sscanf(num.GetBuffer(), "%u%1s", &number, &ch) == 1 )
+				if( ReadDec(str, number) ? ( *str == '\0') : FALSE )
 				{
 					pleft ->m_nnumber = number;
 					pright->m_nnumber = number;
@@ -2657,12 +2672,25 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 
 				// save name
 				CBufferT <CHART> & name = pDelegate->m_szNamed;
+				CBufferT <char> num;
+
 				while(curr.ch != RCHART(0) && curr.ch != named_end)
 				{
 					name.Append(curr.ch, 1);
+					num .Append(((curr.ch & (CHART)0xff) == curr.ch) ? (char)curr.ch : 0, 1);
 					MoveNext();
 				}
 				MoveNext(); // skip '>' or '\''
+
+				// check <num>
+				unsigned int number;
+				char * str = num.GetBuffer();
+
+				if( ReadDec(str, number) ? ( *str == '\0') : FALSE )
+				{
+					pDelegate->m_ndata = number;
+					name.Release();
+				}
 
 				m_recursivelist.Push(pDelegate);
 				pElx = pDelegate;
@@ -2672,12 +2700,13 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 				CBufferT <char> rto;
 				while(curr.ch != RCHART(0) && curr.ch != RCHART(')'))
 				{
-					rto.Append((char)curr.ch, 1);
+					rto.Append(((curr.ch & (CHART)0xff) == curr.ch) ? (char)curr.ch : 0, 1);
 					MoveNext();
 				}
 
 				unsigned int rtono = 0;
-				sscanf(rto.GetBuffer(), "%u", &rtono);
+				char * str = rto.GetBuffer();
+				ReadDec(str, rtono);
 
 				CDelegateElx * pDelegate = (CDelegateElx *)Keep(new CDelegateElx(rtono));
 
@@ -2712,17 +2741,16 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 					CBufferT <char> numstr;
 					while(pos0 < curr.pos)
 					{
-						numstr.Append((char)m_pattern[pos0], 1);
+						CHART ch = m_pattern[pos0];
+						numstr.Append(((ch & (CHART)0xff) == ch) ? (char)ch : 0, 1);
 						pos0 ++;
 					}
 
 					unsigned int number;
-					char ch;
-
-					int red = sscanf(numstr.GetBuffer(), "%u%1s", &number, &ch);
+					char * str = numstr.GetBuffer();
 
 					// valid group number
-					if( red == 1 )
+					if( ReadDec(str, number) ? ( *str == '\0') : FALSE )
 					{
 						pConditionElx->m_nnumber = number;
 						pCondition = 0;
@@ -2766,12 +2794,13 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 				CBufferT <char> rto;
 				while(curr.ch != RCHART(0) && curr.ch != RCHART(')'))
 				{
-					rto.Append((char)curr.ch, 1);
+					rto.Append(((curr.ch & (CHART)0xff) == curr.ch) ? (char)curr.ch : 0, 1);
 					MoveNext();
 				}
 
 				unsigned int rtono = 0;
-				sscanf(rto.GetBuffer(), "%u", &rtono);
+				char * str = rto.GetBuffer();
+				ReadDec(str, rtono);
 
 				CDelegateElx * pDelegate = (CDelegateElx *)Keep(new CDelegateElx(rtono));
 
@@ -2919,14 +2948,30 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildBackref(int & fl
 
 		// save name
 		CBufferT <CHART> & name = pbackref->m_szNamed;
+		CBufferT <char> num;
+
 		while(curr.ch != RCHART(0) && curr.ch != named_end)
 		{
 			name.Append(curr.ch, 1);
+			num .Append(((curr.ch & (CHART)0xff) == curr.ch) ? (char)curr.ch : 0, 1);
 			MoveNext();
 		}
 		MoveNext(); // skip '>' or '\''
 
-		m_namedbackreflist.Push(pbackref);
+		// check <num>
+		unsigned int number;
+		char * str = num.GetBuffer();
+
+		if( ReadDec(str, number) ? ( *str == '\0') : FALSE )
+		{
+			pbackref->m_nnumber = number;
+			name.Release();
+		}
+		else
+		{
+			m_namedbackreflist.Push(pbackref);
+		}
+
 		return pbackref;
 	}
 	else
@@ -2946,6 +2991,40 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildBackref(int & fl
 		return Keep(new CBackrefElxT <CHART> (nbackref, flags & RIGHTTOLEFT, flags & IGNORECASE));
 	}
 }
+
+template <class CHART> int CBuilderT <CHART> :: ReadDec(char * & str, unsigned int & dec)
+{
+	int s = 0;
+	while(str[s] != 0 && isspace(str[s])) s++;
+
+	if(str[s] < '0' || str[s] > '9') return 0;
+
+	dec = 0;
+	unsigned int i;
+
+	for(i = s; i<sizeof(CHART)*3 + s; i++)
+	{
+		if(str[i] >= '0' && str[i] <= '9')
+			dec = dec * 10 + (str[i] - '0');
+		else
+			break;
+	}
+
+	while(str[i] != 0 && isspace(str[i])) i++;
+	str += i;
+
+	return 1;
+}
+
+#endif//__BUILDER_T_H__
+// regexp.h : regular expression t
+//
+
+#ifndef __DEELX_REGEXP_T_H__
+#define __DEELX_REGEXP_T_H__
+
+#include "buildert.h"
+#include "mresult.h"
 
 //
 // Regexp
