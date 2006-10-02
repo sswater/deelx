@@ -2631,7 +2631,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 				unsigned int number;
 				char * str = num.GetBuffer();
 
-				if( ReadDec(str, number) ? ( *str == '\0') : FALSE )
+				if( ReadDec(str, number) ? ( *str == '\0') : 0 )
 				{
 					pleft ->m_nnumber = number;
 					pright->m_nnumber = number;
@@ -2686,7 +2686,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 				unsigned int number;
 				char * str = num.GetBuffer();
 
-				if( ReadDec(str, number) ? ( *str == '\0') : FALSE )
+				if( ReadDec(str, number) ? ( *str == '\0') : 0 )
 				{
 					pDelegate->m_ndata = number;
 					name.Release();
@@ -2750,7 +2750,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildRecursive(int & 
 					char * str = numstr.GetBuffer();
 
 					// valid group number
-					if( ReadDec(str, number) ? ( *str == '\0') : FALSE )
+					if( ReadDec(str, number) ? ( *str == '\0') : 0 )
 					{
 						pConditionElx->m_nnumber = number;
 						pCondition = 0;
@@ -2962,7 +2962,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildBackref(int & fl
 		unsigned int number;
 		char * str = num.GetBuffer();
 
-		if( ReadDec(str, number) ? ( *str == '\0') : FALSE )
+		if( ReadDec(str, number) ? ( *str == '\0') : 0 )
 		{
 			pbackref->m_nnumber = number;
 			name.Release();
