@@ -3016,16 +3016,6 @@ template <class CHART> int CBuilderT <CHART> :: ReadDec(char * & str, unsigned i
 	return 1;
 }
 
-#endif//__BUILDER_T_H__
-// regexp.h : regular expression t
-//
-
-#ifndef __DEELX_REGEXP_T_H__
-#define __DEELX_REGEXP_T_H__
-
-#include "buildert.h"
-#include "mresult.h"
-
 //
 // Regexp
 //
