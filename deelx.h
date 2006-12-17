@@ -932,7 +932,7 @@ public:
 	CPosixElxT(const char * posix, int brightleft);
 
 protected:
-	static int misblank(int c);
+	static int m_isblank(int c);
 
 public:
 	int (*m_posixfun)(int);
@@ -958,23 +958,23 @@ template <class CHART> CPosixElxT <CHART> :: CPosixElxT(const char * posix, int 
 		posix += 1;
 	}
 
-	if     (!strncmp(posix, "alnum:", 6)) m_posixfun = isalnum ;
-	else if(!strncmp(posix, "alpha:", 6)) m_posixfun = isalpha ;
-	else if(!strncmp(posix, "ascii:", 6)) m_posixfun = isascii ;
-	else if(!strncmp(posix, "cntrl:", 6)) m_posixfun = iscntrl ;
-	else if(!strncmp(posix, "digit:", 6)) m_posixfun = isdigit ;
-	else if(!strncmp(posix, "graph:", 6)) m_posixfun = isgraph ;
-	else if(!strncmp(posix, "lower:", 6)) m_posixfun = islower ;
-	else if(!strncmp(posix, "print:", 6)) m_posixfun = isprint ;
-	else if(!strncmp(posix, "punct:", 6)) m_posixfun = ispunct ;
-	else if(!strncmp(posix, "space:", 6)) m_posixfun = isspace ;
-	else if(!strncmp(posix, "upper:", 6)) m_posixfun = isupper ;
-	else if(!strncmp(posix, "xdigit:",7)) m_posixfun = isxdigit;
-	else if(!strncmp(posix, "blank:", 6)) m_posixfun = misblank;
-	else                                  m_posixfun = 0       ;
+	if     (!strncmp(posix, "alnum:", 6)) m_posixfun = ::isalnum ;
+	else if(!strncmp(posix, "alpha:", 6)) m_posixfun = ::isalpha ;
+	else if(!strncmp(posix, "ascii:", 6)) m_posixfun = ::isascii ;
+	else if(!strncmp(posix, "cntrl:", 6)) m_posixfun = ::iscntrl ;
+	else if(!strncmp(posix, "digit:", 6)) m_posixfun = ::isdigit ;
+	else if(!strncmp(posix, "graph:", 6)) m_posixfun = ::isgraph ;
+	else if(!strncmp(posix, "lower:", 6)) m_posixfun = ::islower ;
+	else if(!strncmp(posix, "print:", 6)) m_posixfun = ::isprint ;
+	else if(!strncmp(posix, "punct:", 6)) m_posixfun = ::ispunct ;
+	else if(!strncmp(posix, "space:", 6)) m_posixfun = ::isspace ;
+	else if(!strncmp(posix, "upper:", 6)) m_posixfun = ::isupper ;
+	else if(!strncmp(posix, "xdigit:",7)) m_posixfun = ::isxdigit;
+	else if(!strncmp(posix, "blank:", 6)) m_posixfun = m_isblank ;
+	else                                  m_posixfun = 0         ;
 }
 
-template <class CHART> int CPosixElxT <CHART> :: misblank(int c)
+template <class CHART> int CPosixElxT <CHART> :: m_isblank(int c)
 {
 	return c == 0x20 || c == '\t';
 }
