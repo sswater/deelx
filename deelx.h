@@ -3509,9 +3509,10 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 
 	result_string[result_length] = 0;
 
-	result->m_result.Append(toIndex < toLastIndex ? toIndex : toLastIndex, 2);
-	result->m_result.Append(toIndex > toLastIndex ? toIndex : toLastIndex);
+	result->m_result.Append(result_length, 3);
 	result->m_result.Append(ntime);
+	result->m_result.Append(toIndex < toLastIndex ? toIndex : toLastIndex);
+	result->m_result.Append(toIndex > toLastIndex ? toIndex : toLastIndex);
 
 	return result_string.Detach();
 }
