@@ -3289,26 +3289,132 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 
 template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring, int string_length, const CHART * replaceto, int to_length, int & result_length, int start, int ntimes, MatchResult * remote_result, CContext * oContext) const
 {
-	typedef CBufferRefT <CHART> StringRef;
+	if(m_builder.m_pTopElx == 0) return 0;
+
+	// --- compile replace to ---
+
+	CBufferT <int> compiledto;
+
+	static const CHART rtoptn[] = { RCHART('\\'), RCHART('$' ), RCHART('('), RCHART('?'), RCHART(':'), RCHART('[' ), RCHART('$' ), RCHART('&' ), RCHART('`' ), RCHART('\''), RCHART('+'), RCHART('_' ), RCHART('\\'), RCHART('d'), RCHART(']'), RCHART('|'), RCHART('\\'), RCHART('{'), RCHART('.'), RCHART('*'), RCHART('?'), RCHART('\\'), RCHART('}'), RCHART(')' ), RCHART('\0') };
+	static CRegexpT <CHART> rtoreg(rtoptn);
 
 	MatchResult local_result(0), * result = remote_result ? remote_result : & local_result;
 
-	if(m_builder.m_pTopElx == 0) return 0;
+	// prepare
+	CContext * pContext = PrepareMatch(replaceto, to_length, -1, oContext);
+	int lastIndex = 0, nmatch = 0;
 
-	// Prepare
-	CContext * pContext = PrepareMatch(tstring, string_length, start, oContext);
+	while( ((*result) = rtoreg.Match(pContext)).IsMatched() )
+	{
+		int delta = result->GetStart() - lastIndex;
+		if( delta > 0 )
+		{
+			compiledto.Push(lastIndex);
+			compiledto.Push(delta);
+		}
 
-	int flags     = m_builder.m_nFlags;
-	int lastIndex = (flags & RIGHTTOLEFT) ? string_length : 0;
-	int endpos    = (flags & RIGHTTOLEFT) ? 0 : string_length;
-	int toIndex   = 0, toLastIndex = 0;
+		lastIndex = result->GetStart();
+		delta     = 2;
+
+		switch(replaceto[lastIndex + 1])
+		{
+		case RCHART('$'):
+			compiledto.Push(lastIndex);
+			compiledto.Push(1);
+			break;
+
+		case RCHART('&'):
+		case RCHART('`'):
+		case RCHART('\''):
+		case RCHART('+'):
+		case RCHART('_'):
+			compiledto.Push(-1);
+			compiledto.Push((int)replaceto[lastIndex + 1]);
+
+		case RCHART('{'):
+			delta  = result->GetEnd() - result->GetStart();
+			nmatch = m_builder.GetNamedNumber(CBufferRefT <CHART> (replaceto + (lastIndex + 2), delta - 3));
+
+			if(nmatch > 0 && nmatch <= m_builder.m_nMaxNumber)
+			{
+				compiledto.Push(-2);
+				compiledto.Push(nmatch);
+			}
+			else
+			{
+				compiledto.Push(lastIndex);
+				compiledto.Push(delta);
+			}
+			break;
+
+		default:
+			nmatch = 0;
+			for(delta=1; delta<=3; delta++)
+			{
+				CHART ch = replaceto[lastIndex + delta];
+
+				if(ch < RCHART('0') || ch > RCHART('9'))
+					break;
+
+				nmatch = nmatch * 10 + (ch - RCHART('0'));
+			}
+
+			if(nmatch > m_builder.m_nMaxNumber)
+			{
+				while(nmatch > m_builder.m_nMaxNumber)
+				{
+					nmatch /= 10;
+					delta --;
+				}
+
+				if(nmatch == 0)
+				{
+					delta = 1;
+				}
+			}
+
+			if(delta == 1)
+			{
+				compiledto.Push(lastIndex);
+				compiledto.Push(1);
+			}
+			else
+			{
+				compiledto.Push(-2);
+				compiledto.Push(nmatch);
+			}
+			break;
+		}
+
+		lastIndex += delta;
+	}
+
+	if(lastIndex < to_length)
+	{
+		compiledto.Push(lastIndex);
+		compiledto.Push(to_length - lastIndex);
+	}
+
+	int rightleft = m_builder.m_nFlags & RIGHTTOLEFT;
+
+	int tb = rightleft ? compiledto.GetSize() - 2 : 0;
+	int te = rightleft ? -2 : compiledto.GetSize();
+	int ts = rightleft ? -2 : 2;
+
+	// --- compile complete ---
+
+	int beginpos  = rightleft ? string_length : 0;
+	int endpos    = rightleft ? 0 : string_length;
+
+	int toIndex0  = 0;
+	int toIndex1  = 0;
 	int i, ntime;
 
-	CBufferT <StringRef *> buffer, buf;
+	CBufferT <const CHART *> buffer;
 
-	static const CHART rtoptn[] = { RCHART('\\'), RCHART('$' ), RCHART('('), RCHART('?'), RCHART(':'), RCHART('[' ), RCHART('$' ), RCHART('&' ), RCHART('`' ), RCHART('\''), RCHART('+'), RCHART('_' ), RCHART('\\'), RCHART('d'), RCHART(']'), RCHART('|'), RCHART('\\'), RCHART('{'), RCHART('.'), RCHART('*'), RCHART('?'), RCHART('\\'), RCHART('}'), RCHART(')' ), RCHART('\0') };
-	static int   rtoptnlen      = StringRef(rtoptn).GetSize();
-	static CRegexpT <CHART> rtoreg(rtoptn, rtoptnlen, 0);
+	// prepare
+	pContext  = PrepareMatch(tstring, string_length, start, pContext);
+	lastIndex = beginpos;
 
 	// Match
 	for(ntime = 0; ntimes < 0 || ntime < ntimes; ntime ++)
@@ -3318,16 +3424,16 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 		if( ! result->IsMatched() )
 			break;
 
-		toIndex = toLastIndex;
-
 		// before
-		if( flags & RIGHTTOLEFT )
+		if( rightleft )
 		{
 			int distance = lastIndex - result->GetEnd();
 			if( distance )
 			{
-				buffer.Push(new StringRef(tstring + result->GetEnd(), distance));
-				toIndex -= distance;
+				buffer.Push(tstring + result->GetEnd());
+				buffer.Push((const CHART *)distance);
+
+				toIndex1 -= distance;
 			}
 			lastIndex = result->GetStart();
 		}
@@ -3336,173 +3442,114 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 			int distance = result->GetStart() - lastIndex;
 			if( distance )
 			{
-				buffer.Push(new StringRef(tstring + lastIndex, distance));
-				toIndex += distance;
+				buffer.Push(tstring + lastIndex);
+				buffer.Push((const CHART *)distance);
+
+				toIndex1 += distance;
 			}
 			lastIndex = result->GetEnd();
 		}
 
-		toLastIndex = toIndex;
+		toIndex0 = toIndex1;
 
 		// middle
-		CContext * pCtx = rtoreg.PrepareMatch(replaceto, to_length, -1);
-		int lastI = 0;
-
-		buf.Restore(0);
-
-		while(1)
+		for(i=tb; i!=te; i+=ts)
 		{
-			MatchResult res = rtoreg.Match(pCtx);
+			int off = compiledto[i];
+			int len = compiledto[i + 1];
 
-			if( ! res.IsMatched() )
-				break;
+			const CHART * sub = replaceto + off;
 
-			// before
-			int distance = res.GetStart() - lastI;
-			if( distance )
+			if( off == -1 )
 			{
-				buf.Push(new StringRef(replaceto + lastI, distance));
-			}
-			lastI = res.GetStart();
-
-			// middle
-			int delta = 2, nmatch = 0;
-
-			switch(replaceto[res.GetStart() + 1])
-			{
-			case RCHART('$'):
-				buf.Push(new StringRef(rtoptn + 1, 1)); // '$' itself
-				break;
-
-			case RCHART('&'):
-				buf.Push(new StringRef(tstring + result->GetStart(), result->GetEnd() - result->GetStart()));
-				break;
-
-			case RCHART('`'):
-				buf.Push(new StringRef(tstring, result->GetStart()));
-				break;
-
-			case RCHART('\''):
-				buf.Push(new StringRef(tstring + result->GetEnd(), string_length - result->GetEnd()));
-				break;
-
-			case RCHART('+'):
-				for(nmatch = result->MaxGroupNumber(); nmatch >= 0; nmatch --)
+				switch(RCHART(len))
 				{
-					if(result->GetGroupStart(nmatch) >= 0) break;
-				}
-				buf.Push(new StringRef(tstring + result->GetGroupStart(nmatch), result->GetGroupEnd(nmatch) - result->GetGroupStart(nmatch)));
-				break;
+				case RCHART('&'):
+					sub = tstring + result->GetStart();
+					len = result->GetEnd() - result->GetStart();
+					break;
 
-			case RCHART('_'):
-				buf.Push(new StringRef(tstring, string_length));
-				break;
+				case RCHART('`'):
+					sub = tstring;
+					len = result->GetStart();
+					break;
 
-			case RCHART('{'):
-				delta  = res.GetEnd() - res.GetStart();
-				nmatch = m_builder.GetNamedNumber(StringRef(replaceto + (res.GetStart() + 2), delta - 3));
+				case RCHART('\''):
+					sub = tstring + result->GetEnd();
+					len = string_length - result->GetEnd();
+					break;
 
-				if(nmatch > 0 && nmatch <= m_builder.m_nMaxNumber)
-					buf.Push(new StringRef(tstring + result->GetGroupStart(nmatch), result->GetGroupEnd(nmatch) - result->GetGroupStart(nmatch)));
-				else
-					buf.Push(new StringRef(replaceto + res.GetStart(), delta));
-				break;
-
-			default:
-				nmatch = 0;
-				for(delta=1; delta<=3; delta++)
-				{
-					CHART ch = replaceto[lastI + delta];
-
-					if(ch < RCHART('0') || ch > RCHART('9'))
-						break;
-
-					nmatch = nmatch * 10 + (ch - RCHART('0'));
-				}
-
-				if(nmatch > m_builder.m_nMaxNumber)
-				{
-					while(nmatch > m_builder.m_nMaxNumber)
+				case RCHART('+'):
+					for(nmatch = result->MaxGroupNumber(); nmatch >= 0; nmatch --)
 					{
-						nmatch /= 10;
-						delta --;
+						if(result->GetGroupStart(nmatch) >= 0) break;
 					}
+					sub = tstring + result->GetGroupStart(nmatch);
+					len = result->GetGroupEnd(nmatch) - result->GetGroupStart(nmatch);
+					break;
 
-					if(nmatch == 0)
-					{
-						delta = 1;
-					}
+				case RCHART('_'):
+					sub = tstring;
+					len = string_length;
+					break;
 				}
-
-				if(delta == 1)
-					buf.Push(new StringRef(rtoptn + 1, 1)); // '$' itself
-				else
-					buf.Push(new StringRef(tstring + result->GetGroupStart(nmatch), result->GetGroupEnd(nmatch) - result->GetGroupStart(nmatch)));
-				break;
 			}
-
-			lastI += delta;
-		}
-
-		// after
-		if(lastI < to_length)
-			buf.Push(new StringRef(replaceto + lastI, to_length - lastI));
-
-		// append to buffer
-		if(flags & RIGHTTOLEFT)
-		{
-			for(i=buf.GetSize()-1; i>=0; i--)
+			else if( off == -2 )
 			{
-				buffer.Push(buf[i]);
-				toLastIndex -= buf[i]->GetSize();
+				sub = tstring + result->GetGroupStart(len);
+				len = result->GetGroupEnd(len) - result->GetGroupStart(len);
 			}
-		}
-		else
-		{
-			for(i=0; i<buf.GetSize(); i++)
-			{
-				buffer.Push(buf[i]);
-				toLastIndex += buf[i]->GetSize();
-			}
-		}
 
-		rtoreg.ReleaseContext(pCtx);
+			buffer.Push(sub);
+			buffer.Push((const CHART *)len);
+
+			toIndex1 += rightleft ? (-len) : len;
+		}
 	}
 
 	// after
-	if(flags & RIGHTTOLEFT)
+	if(rightleft)
 	{
-		if(endpos < lastIndex) buffer.Push(new StringRef(tstring + endpos, lastIndex - endpos));
+		if(endpos < lastIndex)
+		{
+			buffer.Push(tstring + endpos);
+			buffer.Push((const CHART *)(lastIndex - endpos));
+		}
 	}
 	else
 	{
-		if(lastIndex < endpos) buffer.Push(new StringRef(tstring + lastIndex, endpos - lastIndex));
+		if(lastIndex < endpos)
+		{
+			buffer.Push(tstring + lastIndex);
+			buffer.Push((const CHART *)(endpos - lastIndex));
+		}
 	}
 
 	if(oContext == 0) ReleaseContext(pContext);
 
 	// join string
 	result_length = 0;
-	for(i=0; i<buffer.GetSize(); i++) result_length += buffer[i]->GetSize();
+	for(i=0; i<buffer.GetSize(); i+=2)
+	{
+		result_length += (int)buffer[i+1];
+	}
 
 	CBufferT <CHART> result_string;
 	result_string.Prepare(result_length);
 	result_string.Restore(0);
 
-	if(flags & RIGHTTOLEFT)
+	if(rightleft)
 	{
-		for(i=buffer.GetSize()-1; i>=0; i--)
+		for(i=buffer.GetSize()-2; i>=0; i-=2)
 		{
-			result_string.Append(buffer[i]->GetBuffer(), buffer[i]->GetSize());
-			delete buffer[i];
+			result_string.Append(buffer[i], (int)buffer[i+1]);
 		}
 	}
 	else
 	{
-		for(i=0; i<buffer.GetSize(); i++)
+		for(i=0; i<buffer.GetSize(); i+=2)
 		{
-			result_string.Append(buffer[i]->GetBuffer(), buffer[i]->GetSize());
-			delete buffer[i];
+			result_string.Append(buffer[i], (int)buffer[i+1]);
 		}
 	}
 
@@ -3510,8 +3557,17 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 
 	result->m_result.Append(result_length, 3);
 	result->m_result.Append(ntime);
-	result->m_result.Append(toIndex < toLastIndex ? toIndex : toLastIndex);
-	result->m_result.Append(toIndex > toLastIndex ? toIndex : toLastIndex);
+
+	if(rightleft)
+	{
+		result->m_result.Append(result_length - toIndex1);
+		result->m_result.Append(result_length - toIndex0);
+	}
+	else
+	{
+		result->m_result.Append(toIndex0);
+		result->m_result.Append(toIndex1);
+	}
 
 	return result_string.Detach();
 }
