@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <limits.h>
 #include <string.h>
+#include <stdlib.h>
 
 //
 // Data Reference
@@ -184,7 +185,7 @@ template <class ELT> CBufferT <ELT> :: CBufferT(const ELT * pcsz, int length) : 
 {
 	m_nMaxLength = CBufferRefT <ELT> :: m_nSize + 1;
 
-	CBufferRefT <ELT> :: m_pRef = m_pBuffer = new ELT[m_nMaxLength];
+	CBufferRefT <ELT> :: m_pRef = m_pBuffer = (ELT *) malloc(sizeof(ELT) * m_nMaxLength);
 	memcpy(m_pBuffer, pcsz, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
 	m_pBuffer[CBufferRefT <ELT> :: m_nSize] = 0;
 }
@@ -193,7 +194,7 @@ template <class ELT> CBufferT <ELT> :: CBufferT(const ELT * pcsz) : CBufferRefT 
 {
 	m_nMaxLength = CBufferRefT <ELT> :: m_nSize + 1;
 
-	CBufferRefT <ELT> :: m_pRef = m_pBuffer = new ELT[m_nMaxLength];
+	CBufferRefT <ELT> :: m_pRef = m_pBuffer = (ELT *) malloc(sizeof(ELT) * m_nMaxLength);
 	memcpy(m_pBuffer, pcsz, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
 	m_pBuffer[CBufferRefT <ELT> :: m_nSize] = 0;
 }
@@ -234,15 +235,7 @@ template <class ELT> void CBufferT <ELT> :: Append(const ELT * pcsz, int length,
 	// Realloc
 	if(nNewLength > m_nMaxLength)
 	{
-		ELT * pNewBuffer = new ELT[nNewLength];
-
-		if(m_pBuffer != 0)
-		{
-			memcpy(pNewBuffer, m_pBuffer, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
-			delete [] m_pBuffer;
-		}
-
-		CBufferRefT <ELT> :: m_pRef = m_pBuffer = pNewBuffer;
+		CBufferRefT <ELT> :: m_pRef = m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
 		m_nMaxLength = nNewLength;
 	}
 
@@ -266,15 +259,7 @@ template <class ELT> void CBufferT <ELT> :: Push(ELT el)
 		int nNewLength = m_nMaxLength * 2;
 		if( nNewLength < 8 ) nNewLength = 8;
 
-		ELT * pNewBuffer = new ELT[nNewLength];
-
-		if(m_pBuffer != 0)
-		{
-			memcpy(pNewBuffer, m_pBuffer, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
-			delete [] m_pBuffer;
-		}
-
-		CBufferRefT <ELT> :: m_pRef = m_pBuffer = pNewBuffer;
+		CBufferRefT <ELT> :: m_pRef = m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
 		m_nMaxLength = nNewLength;
 	}
 
@@ -332,7 +317,7 @@ template <class ELT> void CBufferT <ELT> :: Release()
 {
 	ELT * pBuffer = Detach();
 
-	if(pBuffer != 0) delete [] pBuffer;
+	if(pBuffer != 0) free(pBuffer);
 }
 
 template <class ELT> void CBufferT <ELT> :: Prepare(int index, int fill)
@@ -356,15 +341,7 @@ template <class ELT> void CBufferT <ELT> :: Prepare(int index, int fill)
 			nNewLength -= nNewLength % 8;
 		}
 
-		ELT * pNewBuffer = new ELT[nNewLength];
-
-		if(m_pBuffer != 0)
-		{
-			memcpy(pNewBuffer, m_pBuffer, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
-			delete [] m_pBuffer;
-		}
-
-		CBufferRefT <ELT> :: m_pRef = m_pBuffer = pNewBuffer;
+		CBufferRefT <ELT> :: m_pRef = m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
 		m_nMaxLength = nNewLength;
 	}
 
@@ -383,7 +360,7 @@ template <class ELT> inline void CBufferT <ELT> :: Restore(int size)
 
 template <class ELT> CBufferT <ELT> :: ~CBufferT()
 {
-	if(m_pBuffer != 0) delete [] m_pBuffer;
+	if(m_pBuffer != 0) free(m_pBuffer);
 }
 
 //
@@ -3574,7 +3551,7 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 
 template <class CHART> inline void CRegexpT <CHART> :: ReleaseString(CHART * tstring)
 {
-	if(tstring != 0) delete [] tstring;
+	if(tstring != 0) free(tstring);
 }
 
 template <class CHART> inline void CRegexpT <CHART> :: ReleaseContext(CContext * pContext)
