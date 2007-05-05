@@ -623,7 +623,7 @@ template <class CHART> int CBoundaryElxT <CHART> :: Match(CContext * pContext) c
 		break;
 	}
 
-	return bsucc;
+	return m_byes ? bsucc : ! bsucc;
 }
 
 template <class CHART> int CBoundaryElxT <CHART> :: MatchNext(CContext *) const
