@@ -545,6 +545,7 @@ enum BOUNDARY_TYPE
 {
 	BOUNDARY_FILE_BEGIN, // begin of whole text
 	BOUNDARY_FILE_END  , // end of whole text
+	BOUNDARY_FILE_END_N, // end of whole text, or before newline at the end
 	BOUNDARY_LINE_BEGIN, // begin of line
 	BOUNDARY_LINE_END  , // end of line
 	BOUNDARY_WORD_BEGIN, // begin of word
@@ -600,6 +601,10 @@ template <class CHART> int CBoundaryElxT <CHART> :: Match(CContext * pContext) c
 
 	case BOUNDARY_FILE_END:
 		bsucc = (npos >= tlen);
+		break;
+
+	case BOUNDARY_FILE_END_N:
+		bsucc = (npos >= tlen) || (pcsz[tlen-1] == RCHART('\n') && (npos == tlen-1 || (pcsz[tlen-2] == RCHART('\r') && npos == tlen-2)));
 		break;
 
 	case BOUNDARY_LINE_BEGIN:
@@ -1688,6 +1693,7 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 			{
 			case RCHART('A'):
 			case RCHART('Z'):
+			case RCHART('z'):
 			case RCHART('w'):
 			case RCHART('W'):
 			case RCHART('s'):
@@ -1730,7 +1736,7 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 					else
 						nex2 = CHART_INFO(ch1, 0, m_nNextPos, delta);
 
-				break;
+					break;
 				}
 
 			case RCHART('u'):
@@ -2399,7 +2405,7 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildSimple(int & fla
 			}
 
 			// boundary
-			if( vch == RCHART('^') || vch == RCHART('$') || vch == RCHART('A') || vch == RCHART('Z') ||
+			if( vch == RCHART('^') || vch == RCHART('$') || vch == RCHART('A') || vch == RCHART('Z') || vch == RCHART('z') ||
 				vch == RCHART('b') || vch == RCHART('B') || vch == RCHART('G') // vch == RCHART('<') || vch == RCHART('>')
 			)
 			{
@@ -2897,6 +2903,9 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildBoundary(int & f
 		return Keep(new CBoundaryElxT <CHART> (BOUNDARY_FILE_BEGIN));
 
 	case RCHART('Z'):
+		return Keep(new CBoundaryElxT <CHART> (BOUNDARY_FILE_END_N));
+
+	case RCHART('z'):
 		return Keep(new CBoundaryElxT <CHART> (BOUNDARY_FILE_END));
 
 	case RCHART('G'):
