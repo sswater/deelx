@@ -714,6 +714,11 @@ template <class CHART> int CBracketElxT <CHART> :: MatchNext(CContext * pContext
 {
 	int index = pContext->m_captureindex[m_nnumber];
 
+	if( index < 0 )
+	{
+		return 0;
+	}
+
 	if( ! m_bright )
 	{
 		if(pContext->m_capturestack[index + 3] < 0)
@@ -3539,7 +3544,7 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 		}
 	}
 
-	result_string[result_length] = 0;
+	result_string.Append(0);
 
 	result->m_result.Append(result_length, 3);
 	result->m_result.Append(ntime);
