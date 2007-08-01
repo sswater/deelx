@@ -1564,8 +1564,17 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: Build(const CBufferRe
 		if( m_recursivelist[i]->m_ndata == -3 )
 			m_recursivelist[i]->m_ndata = GetNamedNumber(m_recursivelist[i]->m_szNamed);
 
-		if( m_recursivelist[i]->m_ndata >= 0 && m_recursivelist[i]->m_ndata < m_grouplist.GetSize() )
-			m_recursivelist[i]->m_pelx = m_grouplist[m_recursivelist[i]->m_ndata];
+		if( m_recursivelist[i]->m_ndata >= 0 && m_recursivelist[i]->m_ndata <= m_nMaxNumber )
+		{
+			for(int j=0; j<m_grouplist.GetSize(); j++)
+			{
+				if(m_recursivelist[i]->m_ndata == ((CBracketElx *)((CListElx*)m_grouplist[j])->m_elxlist[0])->m_nnumber)
+				{
+					m_recursivelist[i]->m_pelx = m_grouplist[j];
+					break;
+				}
+			}
+		}
 	}
 
 	// named backref
