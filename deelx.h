@@ -1024,6 +1024,9 @@ public:
 	CRangeElxT(int brightleft, int byes);
 
 public:
+	int IsContainChar(CHART ch) const;
+
+public:
 	CBufferT <CHART> m_ranges;
 	CBufferT <CHART> m_chars;
 	CBufferT <ElxInterface *> m_embeds;
@@ -1080,6 +1083,24 @@ template <class CHART> int CRangeElxT <CHART> :: Match(CContext * pContext) cons
 
 	if( bsucc )
 		pContext->m_nCurrentPos += m_brightleft ? -1 : 1;
+
+	return bsucc;
+}
+
+template <class CHART> int CRangeElxT <CHART> :: IsContainChar(CHART ch) const
+{
+	int bsucc = 0, i;
+
+	// compare
+	for(i=0; !bsucc && i<m_ranges.GetSize(); i+=2)
+	{
+		if(m_ranges[i] <= ch && ch <= m_ranges[i+1]) bsucc = 1;
+	}
+
+	for(i=0; !bsucc && i<m_chars.GetSize(); i++)
+	{
+		if(m_chars[i] == ch) bsucc = 1;
+	}
 
 	return bsucc;
 }
@@ -1606,6 +1627,7 @@ template <class CHART> void CBuilderT <CHART> :: Clear()
 
 	m_objlist.Restore(0);
 	m_pTopElx = 0;
+	m_nMaxNumber = 0;
 
 	memset(m_pStockElxs, 0, sizeof(m_pStockElxs));
 }
@@ -1940,8 +1962,15 @@ template <class CHART> int CBuilderT <CHART> :: GetNext2()
 		break;
 
 	case RCHART('['):
-		m_nCharsetDepth ++;
-		nex2 = CHART_INFO(ch, 1, m_nNextPos, delta);
+		if( m_nCharsetDepth == 0 || m_pattern.At(m_nNextPos + 1, 0) == RCHART(':') )
+		{
+			m_nCharsetDepth ++;
+			nex2 = CHART_INFO(ch, 1, m_nNextPos, delta);
+		}
+		else
+		{
+			nex2 = CHART_INFO(ch, 0, m_nNextPos, delta);
+		}
 		break;
 
 	case RCHART(']'):
@@ -2444,6 +2473,9 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildSimple(int & fla
 		return GetStockElx(STOCKELX_EMPTY);
 }
 
+#define max(a, b)  (((a) > (b)) ? (a) : (b))
+#define min(a, b)  (((a) < (b)) ? (a) : (b))
+
 template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildCharset(int & flags)
 {
 	// char
@@ -2541,6 +2573,52 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildCharset(int & fl
 
 			// skip ']'
 			MoveNext();
+
+			if( flags & IGNORECASE )
+			{
+				CBufferT <CHART> & ranges = pRange->m_ranges;
+				int i, oldcount = ranges.GetSize() / 2;
+
+				for(i=0; i<oldcount; i++)
+				{
+					CHART newmin, newmax;
+
+					if( ranges[i*2] <= RCHART('Z') && ranges[i*2+1] >= RCHART('A') )
+					{
+						newmin = tolower( max(RCHART('A'), ranges[i*2  ]) );
+						newmax = tolower( min(RCHART('Z'), ranges[i*2+1]) );
+
+						if( newmin < ranges[i*2] || newmax > ranges[i*2+1] )
+						{
+							ranges.Push(newmin);
+							ranges.Push(newmax);
+						}
+					}
+
+					if( ranges[i*2] <= RCHART('z') && ranges[i*2+1] >= RCHART('a') )
+					{
+						newmin = toupper( max(RCHART('a'), ranges[i*2  ]) );
+						newmax = toupper( min(RCHART('z'), ranges[i*2+1]) );
+
+						if( newmin < ranges[i*2] || newmax > ranges[i*2+1] )
+						{
+							ranges.Push(newmin);
+							ranges.Push(newmax);
+						}
+					}
+				}
+
+				CBufferT <CHART> & chars = pRange->m_chars;
+				oldcount = chars.GetSize();
+				for(i=0; i<oldcount; i++)
+				{
+					if( isupper(chars[i]) && ! pRange->IsContainChar(tolower(chars[i])) )
+						chars.Push(tolower(chars[i]));
+
+					if( islower(chars[i]) && ! pRange->IsContainChar(toupper(chars[i])) )
+						chars.Push(toupper(chars[i]));
+				}
+			}
 
 			return pRange;
 		}
