@@ -652,6 +652,7 @@ public:
 
 public:
 	CBracketElxT(int nnumber, int bright);
+	int CheckCaptureIndex(int & index, CContext * pContext) const;
 
 public:
 	int m_nnumber;
@@ -666,6 +667,31 @@ template <class CHART> CBracketElxT <CHART> :: CBracketElxT(int nnumber, int bri
 	m_bright  = bright;
 }
 
+template <class CHART> inline int CBracketElxT <CHART> :: CheckCaptureIndex(int & index, CContext * pContext) const
+{
+	if( index >= pContext->m_capturestack.GetSize() )
+		index  = pContext->m_capturestack.GetSize() - 4;
+
+	while(index >= 0)
+	{
+		if(pContext->m_capturestack[index] == m_nnumber)
+		{
+			return 1;
+		}
+
+		index -= 4;
+	}
+
+
+	return 0;
+}
+
+//
+// capturestack[index+0] => Group number
+// capturestack[index+1] => Capture start pos
+// capturestack[index+2] => Capture end pos
+// capturestack[index+3] => Capture enclose z-index, zindex<0 means inner group with same name
+//
 template <class CHART> int CBracketElxT <CHART> :: Match(CContext * pContext) const
 {
 	// check, for named
@@ -677,7 +703,7 @@ template <class CHART> int CBracketElxT <CHART> :: Match(CContext * pContext) co
 		int index = pContext->m_captureindex[m_nnumber];
 
 		// check
-		if(index > 0 && index < pContext->m_capturestack.GetSize() && pContext->m_capturestack[index+2] < 0)
+		if(CheckCaptureIndex(index, pContext) && pContext->m_capturestack[index+2] < 0)
 		{
 			pContext->m_capturestack[index+3] --;
 			return 1;
@@ -696,15 +722,18 @@ template <class CHART> int CBracketElxT <CHART> :: Match(CContext * pContext) co
 		// check
 		int index = pContext->m_captureindex[m_nnumber];
 
-		if(pContext->m_capturestack[index + 3] < 0)
+		if(CheckCaptureIndex(index, pContext))
 		{
-			pContext->m_capturestack[index + 3] ++;
-			return 1;
-		}
+			if(pContext->m_capturestack[index + 3] < 0) // check inner group with same name
+			{
+				pContext->m_capturestack[index + 3] ++;
+				return 1;
+			}
 
-		// save
-		pContext->m_capturestack[index + 2] = pContext->m_nCurrentPos;
-		pContext->m_capturestack[index + 3] = pContext->m_nParenZindex ++;
+			// save
+			pContext->m_capturestack[index + 2] = pContext->m_nCurrentPos;
+			pContext->m_capturestack[index + 3] = pContext->m_nParenZindex ++;
+		}
 	}
 
 	return 1;
@@ -713,8 +742,7 @@ template <class CHART> int CBracketElxT <CHART> :: Match(CContext * pContext) co
 template <class CHART> int CBracketElxT <CHART> :: MatchNext(CContext * pContext) const
 {
 	int index = pContext->m_captureindex[m_nnumber];
-
-	if( index < 0 )
+	if( ! CheckCaptureIndex(index, pContext) )
 	{
 		return 0;
 	}
@@ -730,22 +758,22 @@ template <class CHART> int CBracketElxT <CHART> :: MatchNext(CContext * pContext
 		pContext->m_capturestack.Restore(pContext->m_capturestack.GetSize() - 4);
 
 		// to find
-		index = pContext->m_capturestack.GetSize() - 4;
-		while(index >= 0 && pContext->m_capturestack[index] != m_nnumber) index -= 4;
+		CheckCaptureIndex(index, pContext);
 
 		// new index
 		pContext->m_captureindex[m_nnumber] = index;
 	}
 	else
 	{
-		if(pContext->m_capturestack[index + 3] < 0)
+		if( pContext->m_capturestack[index + 2] >= 0 )
+		{
+			pContext->m_capturestack[index + 2] = -1;
+			pContext->m_capturestack[index + 3] =  0;
+		}
+		else
 		{
 			pContext->m_capturestack[index + 3] --;
-			return 0;
 		}
-
-		pContext->m_capturestack[index + 2] = -1;
-		pContext->m_capturestack[index + 3] =  0;
 	}
 
 	return 0;
