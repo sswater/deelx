@@ -1587,7 +1587,9 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: Build(const CBufferRe
 
 		if( m_recursivelist[i]->m_ndata >= 0 && m_recursivelist[i]->m_ndata <= m_nMaxNumber )
 		{
-			for(int j=0; j<m_grouplist.GetSize(); j++)
+			if( m_recursivelist[i]->m_ndata == 0 )
+				m_recursivelist[i]->m_pelx = m_pTopElx;
+			else for(int j=1; j<m_grouplist.GetSize(); j++)
 			{
 				if(m_recursivelist[i]->m_ndata == ((CBracketElx *)((CListElx*)m_grouplist[j])->m_elxlist[0])->m_nnumber)
 				{
