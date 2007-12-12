@@ -22,6 +22,11 @@
 #include <string.h>
 #include <stdlib.h>
 
+extern "C" {
+	typedef int (*POSIX_FUNC)(int);
+	int isblank(int c);
+}
+
 //
 // Data Reference
 //
@@ -550,7 +555,7 @@ enum BOUNDARY_TYPE
 	BOUNDARY_LINE_END  , // end of line
 	BOUNDARY_WORD_BEGIN, // begin of word
 	BOUNDARY_WORD_END  , // end of word
-	BOUNDARY_WORD_EDGE ,
+	BOUNDARY_WORD_EDGE
 };
 
 //
@@ -945,11 +950,8 @@ public:
 public:
 	CPosixElxT(const char * posix, int brightleft);
 
-protected:
-	static int m_isblank(int c);
-
 public:
-	int (*m_posixfun)(int);
+	POSIX_FUNC m_posixfun;
 	int m_brightleft;
 	int m_byes;
 };
@@ -984,11 +986,11 @@ template <class CHART> CPosixElxT <CHART> :: CPosixElxT(const char * posix, int 
 	else if(!strncmp(posix, "space:", 6)) m_posixfun = ::isspace ;
 	else if(!strncmp(posix, "upper:", 6)) m_posixfun = ::isupper ;
 	else if(!strncmp(posix, "xdigit:",7)) m_posixfun = ::isxdigit;
-	else if(!strncmp(posix, "blank:", 6)) m_posixfun = m_isblank ;
+	else if(!strncmp(posix, "blank:", 6)) m_posixfun =   isblank ;
 	else                                  m_posixfun = 0         ;
 }
 
-template <class CHART> int CPosixElxT <CHART> :: m_isblank(int c)
+inline int isblank(int c)
 {
 	return c == 0x20 || c == '\t';
 }
@@ -1428,7 +1430,7 @@ enum STOCKELX_ID_DEFINES
 		GLOBAL         = 0x04,
 		IGNORECASE     = 0x08,
 		RIGHTTOLEFT    = 0x10,
-		EXTENDED       = 0x20,
+		EXTENDED       = 0x20
 	};
 	#define _REGEX_FLAGS_DEFINED
 #endif
@@ -1510,7 +1512,7 @@ protected:
 	int m_nNextPos;
 	int m_nCharsetDepth;
 	int m_bQuoted;
-	int (*m_quote_fun)(int);
+	POSIX_FUNC m_quote_fun;
 
 	ElxInterface * m_pStockElxs[STOCKELX_COUNT];
 };
