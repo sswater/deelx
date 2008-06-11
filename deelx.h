@@ -3263,29 +3263,7 @@ template <class CHART> MatchResult CRegexpT <CHART> :: Match(const CHART * tstri
 	CContext context;
 	if(pContext == 0) pContext = &context;
 
-	pContext->m_nParenZindex  =  0;
-	pContext->m_nLastBeginPos = -1;
-	pContext->m_pMatchString  = (void*)tstring;
-	pContext->m_pMatchStringLength = length;
-
-	if(start < 0)
-	{
-		if(m_builder.m_nFlags & RIGHTTOLEFT)
-		{
-			pContext->m_nBeginPos   = length;
-			pContext->m_nCurrentPos = length;
-		}
-		else
-		{
-			pContext->m_nBeginPos   = 0;
-			pContext->m_nCurrentPos = 0;
-		}
-	}
-	else
-	{
-		pContext->m_nBeginPos   = start;
-		pContext->m_nCurrentPos = start;
-	}
+	PrepareMatch(tstring, length, start, pContext);
 
 	return Match( pContext );
 }
@@ -3379,6 +3357,8 @@ template <class CHART> CContext * CRegexpT <CHART> :: PrepareMatch(const CHART *
 	}
 	else
 	{
+		if(start > length) start = length + ((m_builder.m_nFlags & RIGHTTOLEFT)?0:1);
+
 		pContext->m_nBeginPos   = start;
 		pContext->m_nCurrentPos = start;
 	}
