@@ -3420,6 +3420,7 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 		case RCHART('_'):
 			compiledto.Push(-1);
 			compiledto.Push((int)replaceto[lastIndex + 1]);
+			break;
 
 		case RCHART('{'):
 			delta  = result->GetEnd() - result->GetStart();
