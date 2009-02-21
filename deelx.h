@@ -1372,6 +1372,7 @@ public:
 	int GetGroupEnd  (int nGroupNumber) const;
 
 public:
+	MatchResultT(const MatchResultT <x> & from) { *this = from; }
 	MatchResultT(CContext * pContext = 0, int nMaxNumber = -1);
 	MatchResultT <x> & operator = (const MatchResultT <x> &);
 	inline operator int() const { return IsMatched(); }
