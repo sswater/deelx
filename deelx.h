@@ -3302,17 +3302,18 @@ template <class CHART> MatchResult CRegexpT <CHART> :: Match(CContext * pContext
 
 		if( m_builder.m_pTopElx->Match( pContext ) )
 		{
+			pContext->m_capturestack[2] = pContext->m_nCurrentPos;
+
 			// zero width
-			if( pContext->m_nLastBeginPos == pContext->m_nBeginPos && pContext->m_nBeginPos == pContext->m_nCurrentPos )
+			if( /* pContext->m_nLastBeginPos == pContext->m_nBeginPos && */ pContext->m_nBeginPos == pContext->m_nCurrentPos )
 			{
 				pContext->m_nCurrentPos += delta;
-				continue;
+				/* continue; */
 			}
 
 			// save pos
 			pContext->m_nLastBeginPos   = pContext->m_nBeginPos;
 			pContext->m_nBeginPos       = pContext->m_nCurrentPos;
-			pContext->m_capturestack[2] = pContext->m_nCurrentPos;
 
 			// return
 			return MatchResult( pContext, m_builder.m_nMaxNumber );
