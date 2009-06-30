@@ -3305,10 +3305,9 @@ template <class CHART> MatchResult CRegexpT <CHART> :: Match(CContext * pContext
 			pContext->m_capturestack[2] = pContext->m_nCurrentPos;
 
 			// zero width
-			if( /* pContext->m_nLastBeginPos == pContext->m_nBeginPos && */ pContext->m_nBeginPos == pContext->m_nCurrentPos )
+			if( pContext->m_capturestack[1] == pContext->m_nCurrentPos )
 			{
 				pContext->m_nCurrentPos += delta;
-				/* continue; */
 			}
 
 			// save pos
