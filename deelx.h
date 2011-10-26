@@ -3392,7 +3392,7 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 	MatchResult local_result(0), * result = remote_result ? remote_result : & local_result;
 
 	// prepare
-	CContext * pContext = PrepareMatch(replaceto, to_length, -1, oContext);
+	CContext * pContext = rtoreg.PrepareMatch(replaceto, to_length, -1, oContext);
 	int lastIndex = 0, nmatch = 0;
 
 	while( ((*result) = rtoreg.Match(pContext)).IsMatched() )
