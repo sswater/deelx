@@ -3879,6 +3879,24 @@ template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext) const
 		n --;
 	}
 
+	// fix 2012-10-26, thanks to chenlx01@sohu.com
+	else
+	{
+		int nbegin = pContext->m_nCurrentPos;
+		while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
+		{
+			while(pContext->m_nCurrentPos == nbegin)
+			{
+				if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
+			}
+
+			if(pContext->m_nCurrentPos == nbegin) break;
+
+			n ++;
+			nbegin = pContext->m_nCurrentPos;
+		}
+	}
+
 	pContext->m_stack.Push(n);
 
 	return 1;
