@@ -3851,21 +3851,12 @@ template <int x> int CGreedyElxT <x> :: MatchVart(CContext * pContext) const
 
 	while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 	{
-		// fix 2012-11-20
-		if(pContext->m_nCurrentPos == nbegin && (n+1) < m_nvart)
+		while(pContext->m_nCurrentPos == nbegin)
 		{
-			if(CRepeatElxT <x> :: m_pelx->Match(pContext))
-			{
-				if(pContext->m_nCurrentPos == nbegin)
-				{
-					break;
-				}
-				else
-				{
-					n++;
-				}
-			}
+			if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
 		}
+
+		if(pContext->m_nCurrentPos == nbegin) break;
 
 		n ++;
 		nbegin = pContext->m_nCurrentPos;
@@ -3883,6 +3874,9 @@ template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext) const
 
 	if(n == 0) return 0;
 
+	int nbegin0 = pContext->m_nCurrentPos;
+	int n0 = n;
+
 	if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) )
 	{
 		n --;
@@ -3894,23 +3888,24 @@ template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext) const
 		int nbegin = pContext->m_nCurrentPos;
 		while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 		{
-			if(pContext->m_nCurrentPos == nbegin && (n+1) < m_nvart)
+			while(pContext->m_nCurrentPos == nbegin)
 			{
-				if(CRepeatElxT <x> :: m_pelx->Match(pContext))
-				{
-					if(pContext->m_nCurrentPos == nbegin)
-					{
-						break;
-					}
-					else
-					{
-						n++;
-					}
-				}
+				if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
 			}
+
+			if(pContext->m_nCurrentPos == nbegin) break;
 
 			n ++;
 			nbegin = pContext->m_nCurrentPos;
+		}
+
+		if(pContext->m_nCurrentPos == nbegin0)
+		{
+			while(n > n0 - 1)
+			{
+				while(CRepeatElxT <x> :: m_pelx->MatchNext(pContext)) { }
+				n --;
+			}
 		}
 	}
 
@@ -4223,15 +4218,9 @@ template <int x> int CReluctantElxT <x> :: MatchNextVart(CContext * pContext) co
 
 	if(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 	{
-		if(pContext->m_nCurrentPos == nbegin && (n+1) < m_nvart)
+		while(pContext->m_nCurrentPos == nbegin)
 		{
-			if(CRepeatElxT <x> :: m_pelx->Match(pContext))
-			{
-				if(pContext->m_nCurrentPos != nbegin)
-				{
-					n++;
-				}
-			}
+			if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
 		}
 
 		if(pContext->m_nCurrentPos != nbegin)
