@@ -3851,12 +3851,21 @@ template <int x> int CGreedyElxT <x> :: MatchVart(CContext * pContext) const
 
 	while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 	{
-		while(pContext->m_nCurrentPos == nbegin)
+		// fix 2012-11-20
+		if(pContext->m_nCurrentPos == nbegin && (n+1) < m_nvart)
 		{
-			if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
+			if(CRepeatElxT <x> :: m_pelx->Match(pContext))
+			{
+				if(pContext->m_nCurrentPos == nbegin)
+				{
+					break;
+				}
+				else
+				{
+					n++;
+				}
+			}
 		}
-
-		if(pContext->m_nCurrentPos == nbegin) break;
 
 		n ++;
 		nbegin = pContext->m_nCurrentPos;
@@ -3885,12 +3894,20 @@ template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext) const
 		int nbegin = pContext->m_nCurrentPos;
 		while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 		{
-			while(pContext->m_nCurrentPos == nbegin)
+			if(pContext->m_nCurrentPos == nbegin && (n+1) < m_nvart)
 			{
-				if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
+				if(CRepeatElxT <x> :: m_pelx->Match(pContext))
+				{
+					if(pContext->m_nCurrentPos == nbegin)
+					{
+						break;
+					}
+					else
+					{
+						n++;
+					}
+				}
 			}
-
-			if(pContext->m_nCurrentPos == nbegin) break;
 
 			n ++;
 			nbegin = pContext->m_nCurrentPos;
@@ -4206,9 +4223,15 @@ template <int x> int CReluctantElxT <x> :: MatchNextVart(CContext * pContext) co
 
 	if(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 	{
-		while(pContext->m_nCurrentPos == nbegin)
+		if(pContext->m_nCurrentPos == nbegin && (n+1) < m_nvart)
 		{
-			if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
+			if(CRepeatElxT <x> :: m_pelx->Match(pContext))
+			{
+				if(pContext->m_nCurrentPos != nbegin)
+				{
+					n++;
+				}
+			}
 		}
 
 		if(pContext->m_nCurrentPos != nbegin)
