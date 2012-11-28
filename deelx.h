@@ -3848,6 +3848,7 @@ template <int x> int CGreedyElxT <x> :: MatchVart(CContext * pContext) const
 {
 	int n      = 0;
 	int nbegin = pContext->m_nCurrentPos;
+	int nbegin00 = nbegin;
 
 	while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
 	{
@@ -3862,6 +3863,7 @@ template <int x> int CGreedyElxT <x> :: MatchVart(CContext * pContext) const
 		nbegin = pContext->m_nCurrentPos;
 	}
 
+	pContext->m_stack.Push(nbegin00);
 	pContext->m_stack.Push(n);
 
 	return 1;
@@ -3869,8 +3871,9 @@ template <int x> int CGreedyElxT <x> :: MatchVart(CContext * pContext) const
 
 template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext) const
 {
-	int n = 0;
+	int n = 0, nbegin00 = 0;
 	pContext->m_stack.Pop(n);
+	pContext->m_stack.Pop(nbegin00);
 
 	if(n == 0) return 0;
 
@@ -3879,6 +3882,13 @@ template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext) const
 
 	if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) )
 	{
+		n --;
+	}
+
+	// not to re-match
+	else if(pContext->m_nCurrentPos == nbegin00)
+	{
+		while(CRepeatElxT <x> :: m_pelx->MatchNext(pContext)) { }
 		n --;
 	}
 
@@ -3909,6 +3919,7 @@ template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext) const
 		}
 	}
 
+	pContext->m_stack.Push(nbegin00);
 	pContext->m_stack.Push(n);
 
 	return 1;
