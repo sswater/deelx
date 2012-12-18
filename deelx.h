@@ -2,7 +2,7 @@
 //
 // DEELX Regular Expression Engine (v1.2)
 //
-// Copyright 2006 (c) RegExLab.com
+// Copyright 2006 ~ 2012 (c) RegExLab.com
 // All Rights Reserved.
 //
 // http://www.regexlab.com/deelx/
@@ -198,6 +198,27 @@ public:
 	void Insert(int nIndex, const ELT * pT, int nSize)
 	{
 		memcpy(PrepareInsert(nIndex, nSize), pT, sizeof(ELT) * nSize);
+	}
+
+	void Remove(int nIndex)
+	{
+		Remove(nIndex, 1);
+	}
+
+	void Remove(int nIndex, int nSize)
+	{
+		if( nIndex < CBufferRefT <ELT> :: m_nSize )
+		{
+			if( nIndex + nSize >= CBufferRefT <ELT> :: m_nSize )
+			{
+				Restore(nIndex);
+			}
+			else
+			{
+				memmove(CBufferRefT <ELT> :: m_pBuffer + nIndex, CBufferRefT <ELT> :: m_pBuffer + nIndex + nSize, sizeof(ELT) * (CBufferRefT <ELT> :: m_nSize - nIndex - nSize));
+				Restore(CBufferRefT <ELT> :: m_nSize - nSize);
+			}
+		}
 	}
 
 	void SetMaxLength(int nSize)
@@ -438,11 +459,11 @@ template <class ELT> CBufferT <ELT> :: ~CBufferT()
 	if(CBufferRefT<ELT>::m_pBuffer != 0) free(CBufferRefT<ELT>::m_pBuffer);
 }
 
-template <class T, class compareAsT = T> class CSortedBufferT : public CBufferT <T>
+template <class T> class CSortedBufferT : public CBufferT <T>
 {
 public:
 	CSortedBufferT(int reverse = 0);
-	CSortedBufferT(int(__cdecl *)(const void *, const void *));
+	CSortedBufferT(int(*)(const void *, const void *));
 
 public:
 	void Add(const T & rT);
@@ -454,32 +475,32 @@ public:
 	void SortUnFreeze();
 
 public:
-	int  Find(const T & rT, int(__cdecl * compare)(const void *, const void *) = 0) { return FindAs(*(compareAsT*)&rT, compare); }
-	int  FindAs(const compareAsT & rT, int(__cdecl *)(const void *, const void *) = 0);
+	int  Find(const T & rT, int(* compare)(const void *, const void *) = 0) { return FindAs(*(T*)&rT, compare); }
+	int  FindAs(const T & rT, int(*)(const void *, const void *) = 0);
 	int  GetSize() const { return CBufferRefT<T>::m_nSize; }
 	T & operator [] (int nIndex) { return CBufferT <T> :: operator [] (nIndex); }
 
 protected:
-	int (__cdecl * m_fncompare)(const void *, const void *);
+	int (* m_fncompare)(const void *, const void *);
 	static int compareT(const void *, const void *);
 	static int compareReverseT(const void *, const void *);
 
 	int  m_bSortFreezed;
 };
 
-template <class T, class compareAsT> CSortedBufferT <T, compareAsT> :: CSortedBufferT(int reverse)
+template <class T> CSortedBufferT <T> :: CSortedBufferT(int reverse)
 {
 	m_fncompare = reverse ? compareReverseT : compareT;
 	m_bSortFreezed = 0;
 }
 
-template <class T, class compareAsT> CSortedBufferT <T, compareAsT> :: CSortedBufferT(int (__cdecl * compare)(const void *, const void *))
+template <class T> CSortedBufferT <T> :: CSortedBufferT(int (* compare)(const void *, const void *))
 {
 	m_fncompare = compare;
 	m_bSortFreezed = 0;
 }
 
-template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: Add(const T & rT)
+template <class T> void CSortedBufferT <T> :: Add(const T & rT)
 {
 	if(m_bSortFreezed != 0)
 	{
@@ -503,7 +524,7 @@ template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: Add(
 	Insert(c, rT);
 }
 
-template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: Add(const T * pT, int nSize)
+template <class T> void CSortedBufferT <T> :: Add(const T * pT, int nSize)
 {
 	Append(pT, nSize);
 
@@ -513,7 +534,7 @@ template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: Add(
 	}
 }
 
-template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: FindAs(const compareAsT & rT, int(__cdecl * compare)(const void *, const void *))
+template <class T> int CSortedBufferT <T> :: FindAs(const T & rT, int(* compare)(const void *, const void *))
 {
 	const T * pT = (const T *)bsearch(&rT, CBufferRefT<T>::m_pBuffer, CBufferRefT<T>::m_nSize, sizeof(T), compare == 0 ? m_fncompare : compare);
 
@@ -523,19 +544,19 @@ template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: FindA
 		return -1;
 }
 
-template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: Remove(const T & rT)
+template <class T> int CSortedBufferT <T> :: Remove(const T & rT)
 {
 	int pos = Find(rT);
 	if( pos >= 0 ) CBufferT <T> :: Remove(pos);
 	return pos;
 }
 
-template <class T, class compareAsT> inline void CSortedBufferT <T, compareAsT> :: RemoveAll()
+template <class T> inline void CSortedBufferT <T> :: RemoveAll()
 {
 	CBufferT<T>::Restore(0);
 }
 
-template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: SortUnFreeze()
+template <class T> void CSortedBufferT <T> :: SortUnFreeze()
 {
 	if(m_bSortFreezed != 0)
 	{
@@ -544,21 +565,21 @@ template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: Sort
 	}
 }
 
-template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: compareT(const void * elem1, const void * elem2)
+template <class T> int CSortedBufferT <T> :: compareT(const void * elem1, const void * elem2)
 {
-	if( *(const compareAsT *)elem1 == *(const compareAsT *)elem2 )
+	if( *(const T *)elem1 == *(const T *)elem2 )
 		return 0;
-	else if( *(const compareAsT *)elem1 < *(const compareAsT *)elem2 )
+	else if( *(const T *)elem1 < *(const T *)elem2 )
 		return -1;
 	else
 		return 1;
 }
 
-template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: compareReverseT(const void * elem1, const void * elem2)
+template <class T> int CSortedBufferT <T> :: compareReverseT(const void * elem1, const void * elem2)
 {
-	if( *(const compareAsT *)elem1 == *(const compareAsT *)elem2 )
+	if( *(const T *)elem1 == *(const T *)elem2 )
 		return 0;
-	else if( *(const compareAsT *)elem1 > *(const compareAsT *)elem2 )
+	else if( *(const T *)elem1 > *(const T *)elem2 )
 		return -1;
 	else
 		return 1;
