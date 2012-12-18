@@ -55,7 +55,7 @@ public:
 
 // Content
 protected:
-	const ELT * m_pRef;
+	ELT * m_pBuffer;
 	int         m_nSize;
 };
 
@@ -64,24 +64,24 @@ protected:
 //
 template <class ELT> CBufferRefT <ELT> :: CBufferRefT(const ELT * pcsz, int length)
 {
-	m_pRef  = pcsz;
+	m_pBuffer  = (ELT *)pcsz;
 	m_nSize = length;
 }
 
 template <class ELT> CBufferRefT <ELT> :: CBufferRefT(const ELT * pcsz)
 {
-	m_pRef  = pcsz;
+	m_pBuffer  = (ELT *)pcsz;
 	m_nSize = 0;
 
-	if(pcsz != 0) while(m_pRef[m_nSize] != 0) m_nSize ++;
+	if(pcsz != 0) while(m_pBuffer[m_nSize] != 0) m_nSize ++;
 }
 
 template <class ELT> int CBufferRefT <ELT> :: nCompare(const ELT * pcsz) const
 {
 	for(int i=0; i<m_nSize; i++)
 	{
-		if(m_pRef[i] != pcsz[i])
-			return m_pRef[i] - pcsz[i];
+		if(m_pBuffer[i] != pcsz[i])
+			return m_pBuffer[i] - pcsz[i];
 	}
 
 	return 0;
@@ -91,10 +91,10 @@ template <class ELT> int CBufferRefT <ELT> :: nCompareNoCase(const ELT * pcsz) c
 {
 	for(int i=0; i<m_nSize; i++)
 	{
-		if(m_pRef[i] != pcsz[i])
+		if(m_pBuffer[i] != pcsz[i])
 		{
-			if(toupper((int)m_pRef[i]) != toupper((int)pcsz[i]))
-				return m_pRef[i] - pcsz[i];
+			if(toupper((int)m_pBuffer[i]) != toupper((int)pcsz[i]))
+				return m_pBuffer[i] - pcsz[i];
 		}
 	}
 
@@ -123,17 +123,17 @@ template <class ELT> inline int CBufferRefT <ELT> :: CompareNoCase(const CBuffer
 
 template <class ELT> inline ELT CBufferRefT <ELT> :: At(int nIndex, ELT def) const
 {
-	return nIndex >= m_nSize ? def : m_pRef[nIndex];
+	return nIndex >= m_nSize ? def : m_pBuffer[nIndex];
 }
 
 template <class ELT> inline ELT CBufferRefT <ELT> :: operator [] (int nIndex) const
 {
-	return nIndex >= m_nSize ? 0 : m_pRef[nIndex];
+	return nIndex >= m_nSize ? 0 : m_pBuffer[nIndex];
 }
 
 template <class ELT> const ELT * CBufferRefT <ELT> :: GetBuffer() const
 {
-	static const ELT _def[] = {0}; return m_pRef ? m_pRef : _def;
+	static const ELT _def[] = {0}; return m_pBuffer ? m_pBuffer : _def;
 }
 
 template <class ELT> inline int CBufferRefT <ELT> :: GetSize() const
@@ -163,7 +163,9 @@ public:
 
 public:
 	void  Push(ELT   el);
+	void  Push(const CBufferRefT<ELT> & buf);
 	int   Pop (ELT & el);
+	int   Pop (CBufferT<ELT> & buf);
 	int   Peek(ELT & el) const;
 
 public:
@@ -174,12 +176,55 @@ public:
 	void  Prepare(int index, int fill = 0);
 	void  Restore(int size);
 
+	ELT * PrepareInsert(int nPos, int nSize)
+	{
+		int nOldSize = m_nSize;
+		Restore(nPos > m_nSize ? nPos : m_nSize + nSize);
+
+		if( nPos < nOldSize )
+		{
+			ELT * from = m_pBuffer + nPos, * to = m_pBuffer + nPos + nSize;
+			memmove(to, from, sizeof(ELT) * (nOldSize - nPos));
+		}
+
+		return m_pBuffer + nPos;
+	}
+
+	void Insert(int nIndex, const ELT & rT)
+	{
+		Insert(nIndex, &rT, 1);
+	}
+
+	void Insert(int nIndex, const ELT * pT, int nSize)
+	{
+		memcpy(PrepareInsert(nIndex, nSize), pT, sizeof(ELT) * nSize);
+	}
+
+	void SetMaxLength(int nSize)
+	{
+		if( nSize > m_nMaxLength )
+		{
+			if( m_nMaxLength < 8 )
+				m_nMaxLength = 8;
+
+			if( nSize > m_nMaxLength )
+				m_nMaxLength *= 2;
+
+			if( nSize > m_nMaxLength )
+			{
+				m_nMaxLength  = nSize + 11;
+				m_nMaxLength -= m_nMaxLength & 0x07;
+			}
+
+			CBufferRefT <ELT> :: m_pBuffer = (ELT *) realloc(CBufferRefT <ELT> :: m_pBuffer, sizeof(ELT) * m_nMaxLength);
+		}
+	}
+
 public:
 	virtual ~CBufferT();
 
 // Content
 protected:
-	ELT * m_pBuffer;
 	int   m_nMaxLength;
 };
 
@@ -190,7 +235,7 @@ template <class ELT> CBufferT <ELT> :: CBufferT(const ELT * pcsz, int length) : 
 {
 	m_nMaxLength = CBufferRefT <ELT> :: m_nSize + 1;
 
-	CBufferRefT <ELT> :: m_pRef = m_pBuffer = (ELT *) malloc(sizeof(ELT) * m_nMaxLength);
+	CBufferRefT <ELT> :: m_pBuffer = (ELT *) malloc(sizeof(ELT) * m_nMaxLength);
 	memcpy(m_pBuffer, pcsz, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
 	m_pBuffer[CBufferRefT <ELT> :: m_nSize] = 0;
 }
@@ -199,7 +244,7 @@ template <class ELT> CBufferT <ELT> :: CBufferT(const ELT * pcsz) : CBufferRefT 
 {
 	m_nMaxLength = CBufferRefT <ELT> :: m_nSize + 1;
 
-	CBufferRefT <ELT> :: m_pRef = m_pBuffer = (ELT *) malloc(sizeof(ELT) * m_nMaxLength);
+	CBufferRefT <ELT> :: m_pBuffer = (ELT *) malloc(sizeof(ELT) * m_nMaxLength);
 	memcpy(m_pBuffer, pcsz, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
 	m_pBuffer[CBufferRefT <ELT> :: m_nSize] = 0;
 }
@@ -240,7 +285,7 @@ template <class ELT> void CBufferT <ELT> :: Append(const ELT * pcsz, int length,
 	// Realloc
 	if(nNewLength > m_nMaxLength)
 	{
-		CBufferRefT <ELT> :: m_pRef = m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
+		CBufferRefT <ELT> :: m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
 		m_nMaxLength = nNewLength;
 	}
 
@@ -264,12 +309,22 @@ template <class ELT> void CBufferT <ELT> :: Push(ELT el)
 		int nNewLength = m_nMaxLength * 2;
 		if( nNewLength < 8 ) nNewLength = 8;
 
-		CBufferRefT <ELT> :: m_pRef = m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
+		CBufferRefT <ELT> :: m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
 		m_nMaxLength = nNewLength;
 	}
 
 	// Append
 	m_pBuffer[CBufferRefT <ELT> :: m_nSize++] = el;
+}
+
+template <class ELT> void CBufferT <ELT> :: Push(const CBufferRefT<ELT> & buf)
+{
+	for(int i=0; i<buf.GetSize(); i++)
+	{
+		Push(buf[i]);
+	}
+
+	Push((ELT)buf.GetSize());
 }
 
 template <class ELT> inline int CBufferT <ELT> :: Pop(ELT & el)
@@ -283,6 +338,20 @@ template <class ELT> inline int CBufferT <ELT> :: Pop(ELT & el)
 	{
 		return 0;
 	}
+}
+
+template <class ELT> int CBufferT <ELT> :: Pop (CBufferT<ELT> & buf)
+{
+	int size, res = 1;
+	res = res && Pop(*(ELT*)&size);
+	buf.Restore(size);
+
+	for(int i=size-1; i>=0; i--)
+	{
+		res = res && Pop(buf[i]);
+	}
+
+	return res;
 }
 
 template <class ELT> inline int CBufferT <ELT> :: Peek(ELT & el) const
@@ -312,7 +381,7 @@ template <class ELT> ELT * CBufferT <ELT> :: Detach()
 {
 	ELT * pBuffer = m_pBuffer;
 
-	CBufferRefT <ELT> :: m_pRef  = m_pBuffer    = 0;
+	CBufferRefT <ELT> :: m_pBuffer  = m_pBuffer    = 0;
 	CBufferRefT <ELT> :: m_nSize = m_nMaxLength = 0;
 
 	return pBuffer;
@@ -346,7 +415,7 @@ template <class ELT> void CBufferT <ELT> :: Prepare(int index, int fill)
 			nNewLength -= nNewLength % 8;
 		}
 
-		CBufferRefT <ELT> :: m_pRef = m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
+		CBufferRefT <ELT> :: m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
 		m_nMaxLength = nNewLength;
 	}
 
@@ -360,12 +429,139 @@ template <class ELT> void CBufferT <ELT> :: Prepare(int index, int fill)
 
 template <class ELT> inline void CBufferT <ELT> :: Restore(int size)
 {
+	SetMaxLength(size);
 	CBufferRefT <ELT> :: m_nSize = size;
 }
 
 template <class ELT> CBufferT <ELT> :: ~CBufferT()
 {
 	if(m_pBuffer != 0) free(m_pBuffer);
+}
+
+template <class T, class compareAsT = T> class CSortedBufferT : public CBufferT <T>
+{
+public:
+	CSortedBufferT(int reverse = 0);
+	CSortedBufferT(int(__cdecl *)(const void *, const void *));
+
+public:
+	void Add(const T & rT);
+	void Add(const T * pT, int nSize);
+	int  Remove(const T & rT);
+	void RemoveAll();
+
+	void SortFreeze() { m_bSortFreezed = 1; }
+	void SortUnFreeze();
+
+public:
+	int  Find(const T & rT, int(__cdecl * compare)(const void *, const void *) = 0) { return FindAs(*(compareAsT*)&rT, compare); }
+	int  FindAs(const compareAsT & rT, int(__cdecl *)(const void *, const void *) = 0);
+	int  GetSize() const { return m_nSize; }
+	T & operator [] (int nIndex) { return CBufferT <T> :: operator [] (nIndex); }
+
+protected:
+	int (__cdecl * m_fncompare)(const void *, const void *);
+	static int compareT(const void *, const void *);
+	static int compareReverseT(const void *, const void *);
+
+	int  m_bSortFreezed;
+};
+
+template <class T, class compareAsT> CSortedBufferT <T, compareAsT> :: CSortedBufferT(int reverse)
+{
+	m_fncompare = reverse ? compareReverseT : compareT;
+	m_bSortFreezed = 0;
+}
+
+template <class T, class compareAsT> CSortedBufferT <T, compareAsT> :: CSortedBufferT(int (__cdecl * compare)(const void *, const void *))
+{
+	m_fncompare = compare;
+	m_bSortFreezed = 0;
+}
+
+template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: Add(const T & rT)
+{
+	if(m_bSortFreezed != 0)
+	{
+		Append(rT);
+		return;
+	}
+
+	int a = 0, b = m_nSize - 1, c = m_nSize / 2;
+
+	while(a <= b)
+	{
+		int r = m_fncompare(&rT, &CBufferT<T>::m_pBuffer[c]);
+
+		if     ( r < 0 ) b = c - 1;
+		else if( r > 0 ) a = c + 1;
+		else break;
+
+		c = (a + b + 1) / 2;
+	}
+
+	Insert(c, rT);
+}
+
+template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: Add(const T * pT, int nSize)
+{
+	Append(pT, nSize);
+
+	if(m_bSortFreezed == 0)
+	{
+		qsort(m_pT, m_nSize, sizeof(T), m_fncompare);
+	}
+}
+
+template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: FindAs(const compareAsT & rT, int(__cdecl * compare)(const void *, const void *))
+{
+	const T * pT = (const T *)bsearch(&rT, CBufferT<T>::m_pBuffer, m_nSize, sizeof(T), compare == 0 ? m_fncompare : compare);
+
+	if( pT != NULL )
+		return pT - CBufferT<T>::m_pBuffer;
+	else
+		return -1;
+}
+
+template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: Remove(const T & rT)
+{
+	int pos = Find(rT);
+	if( pos >= 0 ) CBufferT <T> :: Remove(pos);
+	return pos;
+}
+
+template <class T, class compareAsT> inline void CSortedBufferT <T, compareAsT> :: RemoveAll()
+{
+	Restore(0);
+}
+
+template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: SortUnFreeze()
+{
+	if(m_bSortFreezed != 0)
+	{
+		m_bSortFreezed = 0;
+		qsort(m_pT, m_nSize, sizeof(T), m_fncompare);
+	}
+}
+
+template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: compareT(const void * elem1, const void * elem2)
+{
+	if( *(const compareAsT *)elem1 == *(const compareAsT *)elem2 )
+		return 0;
+	else if( *(const compareAsT *)elem1 < *(const compareAsT *)elem2 )
+		return -1;
+	else
+		return 1;
+}
+
+template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: compareReverseT(const void * elem1, const void * elem2)
+{
+	if( *(const compareAsT *)elem1 == *(const compareAsT *)elem2 )
+		return 0;
+	else if( *(const compareAsT *)elem1 > *(const compareAsT *)elem2 )
+		return -1;
+	else
+		return 1;
 }
 
 //
@@ -385,6 +581,29 @@ public:
 
 	void * m_pMatchString;
 	int    m_pMatchStringLength;
+};
+
+class CContextShot
+{
+public:
+	CContextShot(CContext * pContext)
+	{
+		m_nCurrentPos = pContext->m_nCurrentPos;
+		nsize  = pContext->m_stack.GetSize();
+		ncsize = pContext->m_capturestack.GetSize();
+	}
+
+	void Restore(CContext * pContext)
+	{
+		pContext->m_stack.Restore(nsize);
+		pContext->m_capturestack.Restore(ncsize);
+		pContext->m_nCurrentPos = m_nCurrentPos;
+	}
+
+public:
+	int m_nCurrentPos;
+	int nsize ;
+	int ncsize;
 };
 
 //
@@ -657,7 +876,7 @@ public:
 
 public:
 	CBracketElxT(int nnumber, int bright);
-	int CheckCaptureIndex(int & index, CContext * pContext) const;
+	static int CheckCaptureIndex(int & index, CContext * pContext, int number);
 
 public:
 	int m_nnumber;
@@ -672,14 +891,14 @@ template <class CHART> CBracketElxT <CHART> :: CBracketElxT(int nnumber, int bri
 	m_bright  = bright;
 }
 
-template <class CHART> inline int CBracketElxT <CHART> :: CheckCaptureIndex(int & index, CContext * pContext) const
+template <class CHART> inline int CBracketElxT <CHART> :: CheckCaptureIndex(int & index, CContext * pContext, int number)
 {
 	if( index >= pContext->m_capturestack.GetSize() )
 		index  = pContext->m_capturestack.GetSize() - 4;
 
 	while(index >= 0)
 	{
-		if(pContext->m_capturestack[index] == m_nnumber)
+		if(pContext->m_capturestack[index] == number)
 		{
 			return 1;
 		}
@@ -708,7 +927,7 @@ template <class CHART> int CBracketElxT <CHART> :: Match(CContext * pContext) co
 		int index = pContext->m_captureindex[m_nnumber];
 
 		// check
-		if(CheckCaptureIndex(index, pContext) && pContext->m_capturestack[index+2] < 0)
+		if(CheckCaptureIndex(index, pContext, m_nnumber) && pContext->m_capturestack[index+2] < 0)
 		{
 			pContext->m_capturestack[index+3] --;
 			return 1;
@@ -727,7 +946,7 @@ template <class CHART> int CBracketElxT <CHART> :: Match(CContext * pContext) co
 		// check
 		int index = pContext->m_captureindex[m_nnumber];
 
-		if(CheckCaptureIndex(index, pContext))
+		if(CheckCaptureIndex(index, pContext, m_nnumber))
 		{
 			if(pContext->m_capturestack[index + 3] < 0) // check inner group with same name
 			{
@@ -747,7 +966,7 @@ template <class CHART> int CBracketElxT <CHART> :: Match(CContext * pContext) co
 template <class CHART> int CBracketElxT <CHART> :: MatchNext(CContext * pContext) const
 {
 	int index = pContext->m_captureindex[m_nnumber];
-	if( ! CheckCaptureIndex(index, pContext) )
+	if( ! CheckCaptureIndex(index, pContext, m_nnumber) )
 	{
 		return 0;
 	}
@@ -763,7 +982,7 @@ template <class CHART> int CBracketElxT <CHART> :: MatchNext(CContext * pContext
 		pContext->m_capturestack.Restore(pContext->m_capturestack.GetSize() - 4);
 
 		// to find
-		CheckCaptureIndex(index, pContext);
+		CheckCaptureIndex(index, pContext, m_nnumber);
 
 		// new index
 		pContext->m_captureindex[m_nnumber] = index;
@@ -871,6 +1090,25 @@ public:
 protected:
 	int MatchFixed    (CContext * pContext) const;
 	int MatchNextFixed(CContext * pContext) const;
+	int MatchForward  (CContext * pContext) const
+	{
+		CContextShot shot(pContext);
+		
+		if( ! m_pelx->Match(pContext) )
+			return 0;
+
+		if(pContext->m_nCurrentPos != shot.m_nCurrentPos)
+			return 1;
+
+		if( ! m_pelx->MatchNext(pContext) )
+			return 0;
+
+		if(pContext->m_nCurrentPos != shot.m_nCurrentPos)
+			return 1;
+
+		shot.Restore(pContext);
+		return 0;
+	}
 
 public:
 	ElxInterface * m_pelx;
@@ -3847,22 +4085,19 @@ template <int x> int CGreedyElxT <x> :: MatchNext(CContext * pContext) const
 template <int x> int CGreedyElxT <x> :: MatchVart(CContext * pContext) const
 {
 	int n      = 0;
-	int nbegin = pContext->m_nCurrentPos;
-	int nbegin00 = nbegin;
+	int nbegin00 = pContext->m_nCurrentPos;
+	int nsize    = pContext->m_stack.GetSize();
+	int ncsize   = pContext->m_capturestack.GetSize();
 
-	while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
+	while(n < m_nvart && CRepeatElx::MatchForward(pContext))
 	{
-		while(pContext->m_nCurrentPos == nbegin)
-		{
-			if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
-		}
-
-		if(pContext->m_nCurrentPos == nbegin) break;
-
 		n ++;
-		nbegin = pContext->m_nCurrentPos;
 	}
 
+	pContext->m_stack.Push(ncsize);
+	pContext->m_stack.Push(nsize);
+	pContext->m_stack.Push(pContext->m_nCurrentPos);
+	pContext->m_stack.Push(1);
 	pContext->m_stack.Push(nbegin00);
 	pContext->m_stack.Push(n);
 
@@ -3871,16 +4106,19 @@ template <int x> int CGreedyElxT <x> :: MatchVart(CContext * pContext) const
 
 template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext) const
 {
-	int n = 0, nbegin00 = 0;
+	int n, nbegin00, nsize, ncsize;
+	CSortedBufferT <int> nbegin99;
 	pContext->m_stack.Pop(n);
 	pContext->m_stack.Pop(nbegin00);
+	pContext->m_stack.Pop(nbegin99);
+	pContext->m_stack.Pop(nsize);
+	pContext->m_stack.Pop(ncsize);
 
 	if(n == 0) return 0;
 
-	int nbegin0 = pContext->m_nCurrentPos;
 	int n0 = n;
 
-	if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) )
+	if( ! m_pelx->MatchNext(pContext) )
 	{
 		n --;
 	}
@@ -3888,37 +4126,37 @@ template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext) const
 	// not to re-match
 	else if(pContext->m_nCurrentPos == nbegin00)
 	{
-		while(CRepeatElxT <x> :: m_pelx->MatchNext(pContext)) { }
-		n --;
+		pContext->m_stack.Restore(nsize);
+		pContext->m_capturestack.Restore(ncsize);
+		pContext->m_nCurrentPos = nbegin00;
+
+		return 0;
 	}
 
 	// fix 2012-10-26, thanks to chenlx01@sohu.com
 	else
 	{
-		int nbegin = pContext->m_nCurrentPos;
-		while(n < m_nvart && CRepeatElxT <x> :: m_pelx->Match(pContext))
+		CContextShot shot(pContext);
+
+		while(n < m_nvart && CRepeatElx::MatchForward(pContext))
 		{
-			while(pContext->m_nCurrentPos == nbegin)
-			{
-				if( ! CRepeatElxT <x> :: m_pelx->MatchNext(pContext) ) break;
-			}
-
-			if(pContext->m_nCurrentPos == nbegin) break;
-
 			n ++;
-			nbegin = pContext->m_nCurrentPos;
 		}
 
-		if(pContext->m_nCurrentPos == nbegin0)
+		if(nbegin99.Find(pContext->m_nCurrentPos) >= 0)
 		{
-			while(n > n0 - 1)
-			{
-				while(CRepeatElxT <x> :: m_pelx->MatchNext(pContext)) { }
-				n --;
-			}
+			shot.Restore(pContext);
+			n = n0;
+		}
+		else
+		{
+			nbegin99.Add(pContext->m_nCurrentPos);
 		}
 	}
 
+	pContext->m_stack.Push(ncsize);
+	pContext->m_stack.Push(nsize);
+	pContext->m_stack.Push(nbegin99);
 	pContext->m_stack.Push(nbegin00);
 	pContext->m_stack.Push(n);
 
@@ -4070,7 +4308,8 @@ template <int x> MatchResultT <x> :: MatchResultT(CContext * pContext, int nMaxN
 		for(int n = 0; n <= nMaxNumber; n++)
 		{
 			int index = pContext->m_captureindex[n];
-			if( index < 0 ) continue;
+			//if( index < 0 ) continue;
+			if( ! CBracketElxT<char>::CheckCaptureIndex(index, pContext, n) ) continue;
 
 			// check enclosed
 			int pos1 = pContext->m_capturestack[index + 1];
