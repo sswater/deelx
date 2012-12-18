@@ -178,16 +178,16 @@ public:
 
 	ELT * PrepareInsert(int nPos, int nSize)
 	{
-		int nOldSize = m_nSize;
-		Restore(nPos > m_nSize ? nPos : m_nSize + nSize);
+		int nOldSize = CBufferRefT<ELT>::m_nSize;
+		Restore(nPos > CBufferRefT<ELT>::m_nSize ? nPos : CBufferRefT<ELT>::m_nSize + nSize);
 
 		if( nPos < nOldSize )
 		{
-			ELT * from = m_pBuffer + nPos, * to = m_pBuffer + nPos + nSize;
+			ELT * from = CBufferRefT<ELT>::m_pBuffer + nPos, * to = CBufferRefT<ELT>::m_pBuffer + nPos + nSize;
 			memmove(to, from, sizeof(ELT) * (nOldSize - nPos));
 		}
 
-		return m_pBuffer + nPos;
+		return CBufferRefT<ELT>::m_pBuffer + nPos;
 	}
 
 	void Insert(int nIndex, const ELT & rT)
@@ -236,8 +236,8 @@ template <class ELT> CBufferT <ELT> :: CBufferT(const ELT * pcsz, int length) : 
 	m_nMaxLength = CBufferRefT <ELT> :: m_nSize + 1;
 
 	CBufferRefT <ELT> :: m_pBuffer = (ELT *) malloc(sizeof(ELT) * m_nMaxLength);
-	memcpy(m_pBuffer, pcsz, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
-	m_pBuffer[CBufferRefT <ELT> :: m_nSize] = 0;
+	memcpy(CBufferRefT<ELT>::m_pBuffer, pcsz, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
+	CBufferRefT<ELT>::m_pBuffer[CBufferRefT <ELT> :: m_nSize] = 0;
 }
 
 template <class ELT> CBufferT <ELT> :: CBufferT(const ELT * pcsz) : CBufferRefT <ELT> (pcsz)
@@ -245,24 +245,24 @@ template <class ELT> CBufferT <ELT> :: CBufferT(const ELT * pcsz) : CBufferRefT 
 	m_nMaxLength = CBufferRefT <ELT> :: m_nSize + 1;
 
 	CBufferRefT <ELT> :: m_pBuffer = (ELT *) malloc(sizeof(ELT) * m_nMaxLength);
-	memcpy(m_pBuffer, pcsz, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
-	m_pBuffer[CBufferRefT <ELT> :: m_nSize] = 0;
+	memcpy(CBufferRefT<ELT>::m_pBuffer, pcsz, sizeof(ELT) * CBufferRefT <ELT> :: m_nSize);
+	CBufferRefT<ELT>::m_pBuffer[CBufferRefT <ELT> :: m_nSize] = 0;
 }
 
 template <class ELT> CBufferT <ELT> :: CBufferT() : CBufferRefT <ELT> (0, 0)
 {
 	m_nMaxLength = 0;
-	m_pBuffer    = 0;
+	CBufferRefT<ELT>::m_pBuffer    = 0;
 }
 
 template <class ELT> inline ELT & CBufferT <ELT> :: operator [] (int nIndex)
 {
-	return m_pBuffer[nIndex];
+	return CBufferRefT<ELT>::m_pBuffer[nIndex];
 }
 
 template <class ELT> inline const ELT & CBufferT <ELT> :: operator [] (int nIndex) const
 {
-	return m_pBuffer[nIndex];
+	return CBufferRefT<ELT>::m_pBuffer[nIndex];
 }
 
 template <class ELT> void CBufferT <ELT> :: Append(const ELT * pcsz, int length, int eol)
@@ -285,15 +285,15 @@ template <class ELT> void CBufferT <ELT> :: Append(const ELT * pcsz, int length,
 	// Realloc
 	if(nNewLength > m_nMaxLength)
 	{
-		CBufferRefT <ELT> :: m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
+		CBufferRefT <ELT> :: m_pBuffer = (ELT *) realloc(CBufferRefT<ELT>::m_pBuffer, sizeof(ELT) * nNewLength);
 		m_nMaxLength = nNewLength;
 	}
 
 	// Append
-	memcpy(m_pBuffer + CBufferRefT <ELT> :: m_nSize, pcsz, sizeof(ELT) * length);
+	memcpy(CBufferRefT<ELT>::m_pBuffer + CBufferRefT <ELT> :: m_nSize, pcsz, sizeof(ELT) * length);
 	CBufferRefT <ELT> :: m_nSize += length;
 
-	if(eol > 0) m_pBuffer[CBufferRefT <ELT> :: m_nSize] = 0;
+	if(eol > 0) CBufferRefT<ELT>::m_pBuffer[CBufferRefT <ELT> :: m_nSize] = 0;
 }
 
 template <class ELT> inline void CBufferT <ELT> :: Append(ELT el, int eol)
@@ -309,12 +309,12 @@ template <class ELT> void CBufferT <ELT> :: Push(ELT el)
 		int nNewLength = m_nMaxLength * 2;
 		if( nNewLength < 8 ) nNewLength = 8;
 
-		CBufferRefT <ELT> :: m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
+		CBufferRefT <ELT> :: m_pBuffer = (ELT *) realloc(CBufferRefT<ELT>::m_pBuffer, sizeof(ELT) * nNewLength);
 		m_nMaxLength = nNewLength;
 	}
 
 	// Append
-	m_pBuffer[CBufferRefT <ELT> :: m_nSize++] = el;
+	CBufferRefT<ELT>::m_pBuffer[CBufferRefT <ELT> :: m_nSize++] = el;
 }
 
 template <class ELT> void CBufferT <ELT> :: Push(const CBufferRefT<ELT> & buf)
@@ -331,7 +331,7 @@ template <class ELT> inline int CBufferT <ELT> :: Pop(ELT & el)
 {
 	if(CBufferRefT <ELT> :: m_nSize > 0)
 	{
-		el = m_pBuffer[--CBufferRefT <ELT> :: m_nSize];
+		el = CBufferRefT<ELT>::m_pBuffer[--CBufferRefT <ELT> :: m_nSize];
 		return 1;
 	}
 	else
@@ -358,7 +358,7 @@ template <class ELT> inline int CBufferT <ELT> :: Peek(ELT & el) const
 {
 	if(CBufferRefT <ELT> :: m_nSize > 0)
 	{
-		el = m_pBuffer[CBufferRefT <ELT> :: m_nSize - 1];
+		el = CBufferRefT<ELT>::m_pBuffer[CBufferRefT <ELT> :: m_nSize - 1];
 		return 1;
 	}
 	else
@@ -369,19 +369,19 @@ template <class ELT> inline int CBufferT <ELT> :: Peek(ELT & el) const
 
 template <class ELT> const ELT * CBufferT <ELT> :: GetBuffer() const
 {
-	static const ELT _def[] = {0}; return m_pBuffer ? m_pBuffer : _def;
+	static const ELT _def[] = {0}; return CBufferRefT<ELT>::m_pBuffer ? CBufferRefT<ELT>::m_pBuffer : _def;
 }
 
 template <class ELT> ELT * CBufferT <ELT> :: GetBuffer()
 {
-	static const ELT _def[] = {0}; return m_pBuffer ? m_pBuffer : (ELT *)_def;
+	static const ELT _def[] = {0}; return CBufferRefT<ELT>::m_pBuffer ? CBufferRefT<ELT>::m_pBuffer : (ELT *)_def;
 }
 
 template <class ELT> ELT * CBufferT <ELT> :: Detach()
 {
-	ELT * pBuffer = m_pBuffer;
+	ELT * pBuffer = CBufferRefT<ELT>::m_pBuffer;
 
-	CBufferRefT <ELT> :: m_pBuffer  = m_pBuffer    = 0;
+	CBufferRefT <ELT> :: m_pBuffer = 0;
 	CBufferRefT <ELT> :: m_nSize = m_nMaxLength = 0;
 
 	return pBuffer;
@@ -415,14 +415,14 @@ template <class ELT> void CBufferT <ELT> :: Prepare(int index, int fill)
 			nNewLength -= nNewLength % 8;
 		}
 
-		CBufferRefT <ELT> :: m_pBuffer = (ELT *) realloc(m_pBuffer, sizeof(ELT) * nNewLength);
+		CBufferRefT <ELT> :: m_pBuffer = (ELT *) realloc(CBufferRefT<ELT>::m_pBuffer, sizeof(ELT) * nNewLength);
 		m_nMaxLength = nNewLength;
 	}
 
 	// size
 	if( CBufferRefT <ELT> :: m_nSize < nNewSize )
 	{
-		memset(m_pBuffer + CBufferRefT <ELT> :: m_nSize, fill, sizeof(ELT) * (nNewSize - CBufferRefT <ELT> :: m_nSize));
+		memset(CBufferRefT<ELT>::m_pBuffer + CBufferRefT <ELT> :: m_nSize, fill, sizeof(ELT) * (nNewSize - CBufferRefT <ELT> :: m_nSize));
 		CBufferRefT <ELT> :: m_nSize = nNewSize;
 	}
 }
@@ -435,7 +435,7 @@ template <class ELT> inline void CBufferT <ELT> :: Restore(int size)
 
 template <class ELT> CBufferT <ELT> :: ~CBufferT()
 {
-	if(m_pBuffer != 0) free(m_pBuffer);
+	if(CBufferRefT<ELT>::m_pBuffer != 0) free(CBufferRefT<ELT>::m_pBuffer);
 }
 
 template <class T, class compareAsT = T> class CSortedBufferT : public CBufferT <T>
@@ -456,7 +456,7 @@ public:
 public:
 	int  Find(const T & rT, int(__cdecl * compare)(const void *, const void *) = 0) { return FindAs(*(compareAsT*)&rT, compare); }
 	int  FindAs(const compareAsT & rT, int(__cdecl *)(const void *, const void *) = 0);
-	int  GetSize() const { return m_nSize; }
+	int  GetSize() const { return CBufferRefT<T>::m_nSize; }
 	T & operator [] (int nIndex) { return CBufferT <T> :: operator [] (nIndex); }
 
 protected:
@@ -487,11 +487,11 @@ template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: Add(
 		return;
 	}
 
-	int a = 0, b = m_nSize - 1, c = m_nSize / 2;
+	int a = 0, b = CBufferRefT<T>::m_nSize - 1, c = CBufferRefT<T>::m_nSize / 2;
 
 	while(a <= b)
 	{
-		int r = m_fncompare(&rT, &CBufferT<T>::m_pBuffer[c]);
+		int r = m_fncompare(&rT, &CBufferRefT<T>::m_pBuffer[c]);
 
 		if     ( r < 0 ) b = c - 1;
 		else if( r > 0 ) a = c + 1;
@@ -509,16 +509,16 @@ template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: Add(
 
 	if(m_bSortFreezed == 0)
 	{
-		qsort(m_pT, m_nSize, sizeof(T), m_fncompare);
+		qsort(CBufferRefT<T>::m_pBuffer, CBufferRefT<T>::m_nSize, sizeof(T), m_fncompare);
 	}
 }
 
 template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: FindAs(const compareAsT & rT, int(__cdecl * compare)(const void *, const void *))
 {
-	const T * pT = (const T *)bsearch(&rT, CBufferT<T>::m_pBuffer, m_nSize, sizeof(T), compare == 0 ? m_fncompare : compare);
+	const T * pT = (const T *)bsearch(&rT, CBufferRefT<T>::m_pBuffer, CBufferRefT<T>::m_nSize, sizeof(T), compare == 0 ? m_fncompare : compare);
 
 	if( pT != NULL )
-		return pT - CBufferT<T>::m_pBuffer;
+		return pT - CBufferRefT<T>::m_pBuffer;
 	else
 		return -1;
 }
@@ -532,7 +532,7 @@ template <class T, class compareAsT> int CSortedBufferT <T, compareAsT> :: Remov
 
 template <class T, class compareAsT> inline void CSortedBufferT <T, compareAsT> :: RemoveAll()
 {
-	Restore(0);
+	CBufferT<T>::Restore(0);
 }
 
 template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: SortUnFreeze()
@@ -540,7 +540,7 @@ template <class T, class compareAsT> void CSortedBufferT <T, compareAsT> :: Sort
 	if(m_bSortFreezed != 0)
 	{
 		m_bSortFreezed = 0;
-		qsort(m_pT, m_nSize, sizeof(T), m_fncompare);
+		qsort(CBufferRefT<T>::m_pBuffer, CBufferRefT<T>::m_nSize, sizeof(T), m_fncompare);
 	}
 }
 
@@ -4118,7 +4118,7 @@ template <int x> int CGreedyElxT <x> :: MatchNextVart(CContext * pContext) const
 
 	int n0 = n;
 
-	if( ! m_pelx->MatchNext(pContext) )
+	if( ! CRepeatElxT<x>::m_pelx->MatchNext(pContext) )
 	{
 		n --;
 	}
