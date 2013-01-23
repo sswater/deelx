@@ -599,6 +599,7 @@ public:
 	int    m_nBeginPos;
 	int    m_nLastBeginPos;
 	int    m_nParenZindex;
+	int    m_nCursiveLimit;
 
 	void * m_pMatchString;
 	int    m_pMatchStringLength;
@@ -1053,7 +1054,17 @@ template <class CHART> CDelegateElxT <CHART> :: CDelegateElxT(int ndata)
 template <class CHART> int CDelegateElxT <CHART> :: Match(CContext * pContext) const
 {
 	if(m_pelx != 0)
-		return m_pelx->Match(pContext);
+	{
+		if(pContext->m_nCursiveLimit > 0)
+		{
+			pContext->m_nCursiveLimit --;
+			int result = m_pelx->Match(pContext);
+			pContext->m_nCursiveLimit ++;
+			return result;
+		}
+		else
+			return 0;
+	}
 	else
 		return 1;
 }
@@ -3464,6 +3475,7 @@ template <class CHART> MatchResult CRegexpT <CHART> :: MatchExact(const CHART * 
 	pContext->m_nLastBeginPos = -1;
 	pContext->m_pMatchString  = (void*)tstring;
 	pContext->m_pMatchStringLength = length;
+	pContext->m_nCursiveLimit = 100;
 
 	if(m_builder.m_nFlags & RIGHTTOLEFT)
 	{
