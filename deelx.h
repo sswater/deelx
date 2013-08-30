@@ -24,7 +24,7 @@
 
 extern "C" {
 	typedef int (*POSIX_FUNC)(int);
-	int isblank(int c);
+	int _isblank(int c);
 }
 
 //
@@ -1314,11 +1314,11 @@ template <class CHART> CPosixElxT <CHART> :: CPosixElxT(const char * posix, int 
 	else if(!strncmp(posix, "space:", 6)) m_posixfun = ::isspace ;
 	else if(!strncmp(posix, "upper:", 6)) m_posixfun = ::isupper ;
 	else if(!strncmp(posix, "xdigit:",7)) m_posixfun = ::isxdigit;
-	else if(!strncmp(posix, "blank:", 6)) m_posixfun =   isblank ;
+	else if(!strncmp(posix, "blank:", 6)) m_posixfun =  _isblank ;
 	else                                  m_posixfun = 0         ;
 }
 
-inline int isblank(int c)
+inline int _isblank(int c)
 {
 	return c == 0x20 || c == '\t';
 }
@@ -4059,7 +4059,7 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 	result_length = 0;
 	for(i=0; i<buffer.GetSize(); i+=2)
 	{
-		result_length += (int)buffer[i+1];
+		result_length += *(int*)(void*)&buffer[i+1];
 	}
 
 	CBufferT <CHART> result_string;
@@ -4070,14 +4070,14 @@ template <class CHART> CHART * CRegexpT <CHART> :: Replace(const CHART * tstring
 	{
 		for(i=buffer.GetSize()-2; i>=0; i-=2)
 		{
-			result_string.Append(buffer[i], (int)buffer[i+1]);
+			result_string.Append(buffer[i], *(int*)(void*)&buffer[i+1]);
 		}
 	}
 	else
 	{
 		for(i=0; i<buffer.GetSize(); i+=2)
 		{
-			result_string.Append(buffer[i], (int)buffer[i+1]);
+			result_string.Append(buffer[i], *(int*)(void*)&buffer[i+1]);
 		}
 	}
 
