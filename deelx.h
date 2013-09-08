@@ -504,7 +504,7 @@ template <class T> void CSortedBufferT <T> :: Add(const T & rT)
 {
 	if(m_bSortFreezed != 0)
 	{
-		Append(rT);
+		CBufferT<T> :: Append(rT);
 		return;
 	}
 
@@ -521,12 +521,12 @@ template <class T> void CSortedBufferT <T> :: Add(const T & rT)
 		c = (a + b + 1) / 2;
 	}
 
-	Insert(c, rT);
+	CBufferT<T> :: Insert(c, rT);
 }
 
 template <class T> void CSortedBufferT <T> :: Add(const T * pT, int nSize)
 {
-	Append(pT, nSize);
+	CBufferT<T> :: Append(pT, nSize);
 
 	if(m_bSortFreezed == 0)
 	{
