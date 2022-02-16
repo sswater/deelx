@@ -1323,6 +1323,11 @@ inline int _isblank(int c)
 	return c == 0x20 || c == '\t';
 }
 
+template <class CHART> inline int _lt256(CHART c)
+{
+	return c >= 0 && c < 256;
+}
+
 template <class CHART> int CPosixElxT <CHART> :: Match(CContext * pContext) const
 {
 	if(m_posixfun == 0) return 0;
@@ -1337,7 +1342,7 @@ template <class CHART> int CPosixElxT <CHART> :: Match(CContext * pContext) cons
 
 	CHART ch = ((const CHART *)pContext->m_pMatchString)[at];
 
-	int bsucc = (*m_posixfun)(ch);
+	int bsucc = _lt256(ch) && (*m_posixfun)(ch);
 
 	if( ! m_byes )
 		bsucc = ! bsucc;
@@ -3051,10 +3056,10 @@ template <class CHART> ElxInterface * CBuilderT <CHART> :: BuildCharset(int & fl
 				oldcount = chars.GetSize();
 				for(i=0; i<oldcount; i++)
 				{
-					if( isupper(chars[i]) && ! pRange->IsContainChar(tolower(chars[i])) )
+					if(_lt256(chars[i]) && isupper(chars[i]) && ! pRange->IsContainChar(tolower(chars[i])) )
 						chars.Push(tolower(chars[i]));
 
-					if( islower(chars[i]) && ! pRange->IsContainChar(toupper(chars[i])) )
+					if(_lt256(chars[i]) &&  islower(chars[i]) && ! pRange->IsContainChar(toupper(chars[i])) )
 						chars.Push(toupper(chars[i]));
 				}
 			}
