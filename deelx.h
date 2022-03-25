@@ -363,7 +363,7 @@ template <class ELT> inline int CBufferT <ELT> :: Pop(ELT & el)
 
 template <class ELT> int CBufferT <ELT> :: Pop (CBufferT<ELT> & buf)
 {
-	int size, res = 1;
+	int size = 0, res = 1;
 	res = res && Pop(*(ELT*)&size);
 	buf.Restore(size);
 
