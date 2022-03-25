@@ -1818,9 +1818,9 @@ protected:
 		int   len;
 
 	public:
-		CHART_INFO(CHART c, int t, int p = 0, int l = 0) { ch = c; type = t; pos = p; len = l;    }
-		inline int operator == (const CHART_INFO & ci)   { return ch == ci.ch && type == ci.type; }
-		inline int operator != (const CHART_INFO & ci)   { return ! operator == (ci);             }
+		CHART_INFO(CHART c, int t, int p = 0, int l = 0)     { ch = c; type = t; pos = p; len = l;    }
+		inline int operator == (const CHART_INFO & ci) const { return ch == ci.ch && type == ci.type; }
+		inline int operator != (const CHART_INFO & ci) const { return ! operator == (ci);             }
 	};
 
 protected:
